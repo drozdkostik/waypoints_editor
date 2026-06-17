@@ -96,8 +96,8 @@ html,body{width:100%;height:100%;overflow:hidden;background:#1a1a1a;color:#ccc;f
 </div>
 <input type="file" id="fi" accept=".waypoints" style="display:none">
 
-<script src="https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.min.js"></script>
-<script>
+<script type="module">
+import * as THREE from './lib/three.module.min.js';
 // ═══════════════════════════════════════════════
 //  UTILS
 // ═══════════════════════════════════════════════
@@ -187,11 +187,12 @@ function applyTransform(wf,gid,scale,rotDeg){
 // ═══════════════════════════════════════════════
 //  STATE
 // ═══════════════════════════════════════════════
-let S={
+const S={
   wf:emptyFile(), activeTool:'select',
   selIds:new Set(), selGrp:null, filePath:'',
 };
-function set(patch){S={...S,...patch};ui();}
+window.S=S;
+function set(patch){Object.assign(S,patch);ui();}
 
 // ═══════════════════════════════════════════════
 //  THREE.JS
@@ -389,7 +390,7 @@ function onMM(e){
     MS.ray.setFromCamera(ndc(e),cam);
     const pt=new THREE.Vector3(); MS.ray.ray.intersectPlane(MS.dPl,pt);
     const{lat,lon}=fw(pt);
-    S={...S,wf:{...S.wf,waypoints:S.wf.waypoints.map(w=>w.id!==MS.dId?w:{...w,lat,lon})}};
+    S.wf={...S.wf,waypoints:S.wf.waypoints.map(w=>w.id!==MS.dId?w:{...w,lat,lon})};
     const m=MM.get(MS.dId); if(m) m.position.set((lon-C3.lon)*111.32*C3.cos,m.position.y,-(lat-C3.lat)*111.32);
     updProps();updStat();
   }
@@ -518,7 +519,7 @@ function updProps(){
       </div>${foot}`;
     const upd=(f,v)=>{
       const nwf={...wf,waypoints:wf.waypoints.map(w=>w.id!==wp.id?w:{...w,[f]:v})};
-      S={...S,wf:nwf};
+      S.wf=nwf;
       const nwp=nwf.waypoints.find(x=>x.id===wp.id);
       if((f==='lat'||f==='lon'||f==='alt')&&nwp){const m=MM.get(wp.id);if(m) m.position.copy(tw(nwp.lat,nwp.lon,nwp.alt));}
       if(f==='type'){const m=MM.get(wp.id);if(m) m.material.color.setHex(TC[v]||0x4a9eff);}
@@ -543,7 +544,7 @@ function updProps(){
 
 function updGrp(id,f,v){
   const nwf={...S.wf,groups:S.wf.groups.map(g=>g.id!==id?g:{...g,[f]:v})};
-  S={...S,wf:nwf}; rebuild();
+  S.wf=nwf; rebuild();
 }
 
 // ── Status Bar ──
@@ -610,6 +611,18 @@ document.addEventListener('keydown',e=>{
 ui();
 initThree();
 rebuild();
+
+// expose to inline onclick handlers
+window.newFile=newFile;
+window.set=set;
+window.selAll=selAll;
+window.doGroup=doGroup;
+window.doUngroup=doUngroup;
+window.fitView=fitView;
+window.dlText=dlText;
+window.toJSON=toJSON;
+window.toQGC=toQGC;
+window.updGrp=updGrp;
 </script>
 </body>
 </html>
