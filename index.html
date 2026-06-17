@@ -3,626 +3,1129 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Waypoints Editor</title>
+<title>🛩️ Waypoints Transformer</title>
+<link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js" onerror="window.PLOTLY_FAILED=true"></script>
 <style>
-*{box-sizing:border-box;margin:0;padding:0}
-html,body{width:100%;height:100%;overflow:hidden;background:#1a1a1a;color:#ccc;font-family:system-ui,sans-serif;font-size:13px}
-#app{width:100%;height:100%;display:flex;flex-direction:column}
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: Arial, sans-serif; }
+  body { display: flex; height: 100vh; background: #1a1a1a; color: #ccc; overflow: hidden; }
 
-/* ── MENUBAR ── */
-#menubar{height:36px;background:#161616;border-bottom:1px solid #2a2a2a;display:flex;align-items:center;padding:0 12px;gap:12px;flex-shrink:0;user-select:none}
-.mb-brand{font-size:13px;font-weight:600;color:#4a9eff}
-.mb-menu{display:flex;gap:2px}
-.mb-group{position:relative}
-.mb-group:hover .mb-drop{display:flex}
-.mb-lbl{padding:4px 10px;font-size:12px;color:#bbb;border-radius:3px;cursor:default}
-.mb-lbl:hover{background:#252525;color:#fff}
-.mb-drop{display:none;position:absolute;top:100%;left:0;min-width:220px;background:#222;border:1px solid #3a3a3a;border-radius:4px;flex-direction:column;z-index:200;box-shadow:0 6px 20px rgba(0,0,0,.6);padding:4px 0}
-.mb-drop button{background:none;border:none;color:#bbb;font-size:12px;padding:6px 14px;text-align:left;cursor:pointer;font-family:inherit;width:100%}
-.mb-drop button:hover{background:#0066cc;color:#fff}
-.mb-drop hr{border:none;border-top:1px solid #2a2a2a;margin:4px 0}
-.mb-badge{font-size:10px;color:#4caf50;background:rgba(76,175,80,.12);border:1px solid rgba(76,175,80,.3);border-radius:3px;padding:1px 6px}
-.mb-path{margin-left:auto;font-size:11px;color:#444}
+  /* ── PANEL ── */
+  #panel { width: 340px; background: #2a2a2a; display: flex; flex-direction: column; overflow-y: auto; border-right: 1px solid #444; flex-shrink: 0; }
+  #panel h1 { background: #0078d4; color: #fff; font-size: 15px; padding: 14px; text-align: center; }
+  .section { margin: 10px; background: #333; border-radius: 6px; padding: 12px; }
+  .section h2 { color: #0078d4; font-size: 12px; margin-bottom: 8px; }
+  button { background: #0078d4; color: #fff; border: none; padding: 9px; border-radius: 4px; cursor: pointer; width: 100%; font-weight: bold; margin-top: 6px; font-size: 13px; }
+  button:hover { background: #0a8ae0; }
+  button.green { background: #4caf50; } button.orange { background: #ff9800; } button.red { background: #f44336; } button.gray { background: #555; }
+  button:disabled { background: #444; color: #777; cursor: not-allowed; }
+  button.active { background: #2196f3; }
+  .row { display: flex; gap: 6px; }
+  label { font-size: 12px; display: block; margin: 8px 0 3px; }
+  input[type=number], input[type=range], select { width: 100%; padding: 6px; background: #444; color: #fff; border: 1px solid #555; border-radius: 4px; }
+  input[type=range] { padding: 0; }
+  .slider-row { display: flex; gap: 6px; align-items: center; margin-top: 2px; }
+  .slider-row input[type=range] { flex: 1; }
+  .slider-row input[type=number] { width: 72px; flex-shrink: 0; padding: 4px 6px; }
+  .chk { display:flex; align-items:center; gap:6px; font-size:12px; margin-top:6px; }
+  .chk input { width:auto; }
+  .info { font-size: 12px; line-height: 1.6; white-space: pre-line; color: #bbb; }
+  .file-name { font-size: 11px; color: #4caf50; margin-bottom: 6px; word-break: break-all; transition: color .2s; }
+  .file-name.dirty { color: #ff9800; }
 
-/* ── WORKSPACE ── */
-#workspace{flex:1;display:flex;overflow:hidden}
+  /* ── RIGHT SIDE ── */
+  #right { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  #toolbar { background: #0078d4; color: #fff; padding: 8px 14px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  #toolbar .title { font-weight: bold; flex: 1; }
+  #toolbar button { width: auto; padding: 6px 14px; background: #3a3a3a; }
+  #toolbar .z-ctrl { display:none; align-items:center; gap:6px; font-size:12px; background:#005a9e; padding:4px 8px; border-radius:4px; }
+  #toolbar .z-ctrl input { width: 90px; }
+  #view-container { flex: 1; position: relative; background:#1a1a1a; }
+  #canvas2d    { position: absolute; inset: 0; width:100%; height:100%; cursor: crosshair; }
+  #map         { position: absolute; inset: 0; display: none; }
+  #plot3d      { position: absolute; inset: 0; display: none; background: #1a1a1a; }
+  #altProfile  { position: absolute; inset: 0; width:100%; height:100%; display: none; background: #1a1a1a; }
+  #status { background: #0078d4; color: #fff; padding: 6px 14px; font-size: 12px; }
 
-/* ── TOOLS PANEL ── */
-#tools{width:68px;background:#1e1e1e;border-right:1px solid #333;display:flex;flex-direction:column;align-items:center;padding:8px 4px;gap:4px;flex-shrink:0}
-.tp-title{font-size:9px;color:#555;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px}
-.tp-btns,.tp-actions{display:flex;flex-direction:column;gap:4px;width:100%}
-.tool-btn{width:100%;height:48px;background:#2a2a2a;border:1px solid #3a3a3a;border-radius:4px;color:#999;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;transition:background .1s}
-.tool-btn:hover{background:#333;color:#ddd}
-.tool-btn.active{background:#0066cc;border-color:#0088ff;color:#fff}
-.tool-btn .ti{font-size:18px;line-height:1}
-.tool-btn .tk{font-size:9px;opacity:.6}
-.tp-div{width:80%;height:1px;background:#333;margin:6px 0}
-.act-btn{width:100%;height:40px;background:#252525;border:1px solid #3a3a3a;border-radius:4px;color:#888;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;font-size:10px;font-family:inherit;transition:background .1s}
-.act-btn .ti{font-size:14px}
-.act-btn:hover:not(:disabled){background:#333;color:#ddd}
-.act-btn:disabled{opacity:.35;cursor:default}
+  /* ── TABLE ── */
+  table { width: 100%; font-size: 11px; border-collapse: collapse; margin-top: 6px; }
+  th { background: #0078d4; color: #fff; padding: 4px; }
+  td { padding: 3px; text-align: center; border-bottom: 1px solid #444; }
+  tr.sel { background: #0078d4; color:#fff; }
+  .tbl-wrap { max-height: 200px; overflow-y: auto; }
+  .hint { font-size: 11px; color: #888; margin-top: 6px; }
+  .wp-marker { width:14px; height:14px; border-radius:50%; border:2px solid #fff; cursor:pointer; box-shadow:0 0 4px #000; }
 
-/* ── CANVAS AREA ── */
-#canvas-area{flex:1;position:relative;overflow:hidden}
-#mount{width:100%;height:100%}
-#mount canvas{display:block}
-#labels{position:absolute;inset:0;pointer-events:none}
-.wlabel{position:absolute;transform:translateX(-50%);font-size:11px;color:#aaa;white-space:nowrap;pointer-events:none;text-shadow:0 1px 3px rgba(0,0,0,.9)}
-.wlabel.sel{color:#fff;font-weight:600}
-#chint{position:absolute;bottom:8px;left:10px;font-size:10px;color:#3a4050;pointer-events:none}
+  /* ── UNDO ROW ── */
+  .undo-row { display: flex; gap: 6px; }
+  .undo-row button { font-size: 11px; padding: 5px 8px; }
 
-/* ── PROPERTIES PANEL ── */
-#props{width:230px;background:#1e1e1e;border-left:1px solid #333;display:flex;flex-direction:column;overflow:hidden;flex-shrink:0}
-.pp-title{font-size:11px;color:#aaa;letter-spacing:1px;text-transform:uppercase;padding:10px 12px 8px;border-bottom:1px solid #333;flex-shrink:0}
-.pp-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:#555;font-size:13px}
-.pp-empty .hint{font-size:11px;color:#3a3a3a;text-align:center;padding:0 16px}
-.pp-form{flex:1;overflow-y:auto;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
-.pp-form label{display:flex;flex-direction:column;gap:3px;font-size:11px;color:#777}
-.pp-form input,.pp-form select,.pp-form textarea{background:#2a2a2a;border:1px solid #404040;color:#ddd;border-radius:3px;padding:4px 7px;font-size:12px;outline:none;font-family:inherit}
-.pp-form input:focus,.pp-form select:focus,.pp-form textarea:focus{border-color:#0088ff}
-.pp-sec{font-size:10px;color:#555;text-transform:uppercase;letter-spacing:1px;margin-top:4px;padding-bottom:4px;border-bottom:1px solid #2a2a2a}
-.pp-crow{display:flex;align-items:center;gap:8px}
-.pp-crow input[type=color]{width:32px;height:24px;padding:1px;cursor:pointer;border-radius:3px;border:1px solid #444;background:#2a2a2a}
-.pp-crow span{font-size:11px;color:#666;font-family:monospace}
-.pp-apply{background:#0066cc;border:none;color:#fff;border-radius:4px;padding:7px 12px;font-size:12px;font-family:inherit;cursor:pointer;margin-top:4px;width:100%}
-.pp-apply:hover{background:#0077ee}
-.pp-id{font-size:10px;color:#3a3a3a;margin-top:2px}
-.pp-foot{border-top:1px solid #2a2a2a;padding:8px 12px;font-size:10px;color:#444;display:flex;flex-direction:column;gap:2px;flex-shrink:0}
+  /* ── DRAG-AND-DROP OVERLAY ── */
+  #drop-overlay { position: fixed; inset: 0; background: rgba(0,120,212,.35); border: 4px dashed #4ab3ff; z-index: 9999; display: none; align-items: center; justify-content: center; font-size: 26px; color: #fff; text-shadow: 0 2px 8px #000; pointer-events: none; }
+  #drop-overlay.active { display: flex; }
 
-/* ── STATUS BAR ── */
-#statusbar{height:24px;background:#141414;border-top:1px solid #2a2a2a;display:flex;align-items:center;padding:0 12px;gap:14px;font-size:11px;color:#444;flex-shrink:0}
-.sb-tool{color:#4a9eff;text-transform:capitalize;font-weight:500}
-.sb-hint{color:#555}
-.sb-coords{color:#888}
-.sb-multi{color:#4caf50}
-.sb-count{margin-left:auto}
+  /* ── MOBILE ── */
+  @media (max-width: 640px) {
+    body { flex-direction: column; overflow: auto; }
+    #panel { width: 100%; height: auto; max-height: 45vh; border-right: none; border-bottom: 1px solid #444; }
+    #right { min-height: 55vh; }
+  }
 
-::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:#1a1a1a}::-webkit-scrollbar-thumb{background:#444;border-radius:3px}
+  ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: #1a1a1a; } ::-webkit-scrollbar-thumb { background: #444; border-radius: 3px; }
 </style>
 </head>
 <body>
-<div id="app">
-  <header id="menubar"></header>
-  <div id="workspace">
-    <aside id="tools"></aside>
-    <main id="canvas-area">
-      <div id="mount"></div>
-      <div id="labels"></div>
-      <div id="chint">Left drag: orbit &nbsp;·&nbsp; Right drag: pan &nbsp;·&nbsp; Scroll: zoom &nbsp;·&nbsp; F: fit</div>
-    </main>
-    <aside id="props"></aside>
+
+<div id="drop-overlay">📂 Відпустіть файл .waypoints</div>
+
+<div id="panel">
+  <h1>⚙️ Waypoints Transformer</h1>
+
+  <div class="section">
+    <h2>📂 ФАЙЛ</h2>
+    <div class="file-name" id="fileName">Файл не вибрано</div>
+    <input type="file" id="fileInput" accept=".waypoints" style="display:none">
+    <button onclick="document.getElementById('fileInput').click()">📁 Вибрати файл</button>
   </div>
-  <footer id="statusbar"></footer>
+
+  <div class="section">
+    <h2>📊 ІНФОРМАЦІЯ</h2>
+    <div class="info" id="infoBox">Завантажте файл</div>
+  </div>
+
+  <div class="section">
+    <h2>🔄 ТРАНСФОРМАЦІЯ</h2>
+    <label>Опора обертання</label>
+    <select id="rotateFrom"><option value="center">Центр фігури</option><option value="end">Кінцева точка</option></select>
+    <label>Кут: <span id="angleVal">0</span>°</label>
+    <div class="slider-row">
+      <input type="range" id="angle" min="-360" max="360" value="0" step="1">
+      <input type="number" id="angleNum" min="-360" max="360" value="0" step="1">
+    </div>
+    <label>Опора масштабу</label>
+    <select id="scaleFrom"><option value="center">Центр фігури</option><option value="end">Кінцева точка</option></select>
+    <label>Масштаб: <span id="scaleVal">1.0</span>x</label>
+    <div class="slider-row">
+      <input type="range" id="scale" min="0.1" max="3" value="1" step="0.1">
+      <input type="number" id="scaleNum" min="0.1" max="3" value="1" step="0.1">
+    </div>
+    <button class="orange" onclick="resetTransform()">↺ Скинути трансформацію</button>
+  </div>
+
+  <div class="section">
+    <h2>🗺️ ШАРИ КАРТИ</h2>
+    <div class="chk"><input type="checkbox" id="chkBorder" checked onchange="toggleBorder()"><label style="margin:0">Кордон України</label></div>
+  </div>
+
+  <div class="section">
+    <h2>✏️ РЕДАГУВАННЯ</h2>
+    <div class="undo-row">
+      <button id="btnUndo" class="gray" onclick="undo()" disabled title="Ctrl+Z">↩ Відмінити</button>
+      <button id="btnRedo" class="gray" onclick="redo()" disabled title="Ctrl+Y">↪ Повторити</button>
+    </div>
+    <div class="row" style="margin-top:6px">
+      <button id="btnView" class="active" onclick="setEdit(false)">👁️ Перегляд</button>
+      <button id="btnEdit" class="gray" onclick="setEdit(true)">✏️ Редагування</button>
+    </div>
+    <div class="hint">Карта/Схема: 2× клік на ЛІНІЇ — вставити точку; 2× на вільному — додати; тягнути маркер — рух.<br>Графік 3D: клік — вибрати, колесо — висота.</div>
+    <label>Висота вибраної точки (м)</label>
+    <input type="number" id="altInput" value="0" step="5" disabled>
+    <button class="red" id="btnDel" onclick="deleteSelected()" disabled>🗑️ Видалити вибрану</button>
+  </div>
+
+  <div class="section">
+    <h2>📋 WAYPOINTS</h2>
+    <div class="tbl-wrap" id="tblWrap">
+      <table id="wpTable"><thead><tr><th>ID</th><th>Lat</th><th>Lon</th><th>Alt</th></tr></thead><tbody></tbody></table>
+    </div>
+  </div>
+
+  <div class="section">
+    <button class="green" onclick="saveFile()">💾 ЗБЕРЕГТИ ЗМІНИ</button>
+    <button class="orange" onclick="resetAll()">↺ СКИНУТИ ВСЕ</button>
+  </div>
 </div>
-<input type="file" id="fi" accept=".waypoints" style="display:none">
 
-<script type="module">
-import * as THREE from './lib/three.module.min.js';
-// ═══════════════════════════════════════════════
-//  UTILS
-// ═══════════════════════════════════════════════
-function uid(){
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{
-    const r=Math.random()*16|0;return(c==='x'?r:r&0x3|0x8).toString(16);
-  });
-}
-function dlText(txt,name){
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob([txt],{type:'text/plain'}));
-  a.download=name;a.click();URL.revokeObjectURL(a.href);
-}
-function esc(s){
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
+<div id="right">
+  <div id="toolbar">
+    <span class="title">📈 ПЕРЕГЛЯД</span>
+    <div class="z-ctrl" id="zCtrl">
+      <span>📐 Висота ×:</span>
+      <input type="range" id="zExag" min="1" max="50" value="1" step="1">
+      <span id="zExagVal">1×</span>
+    </div>
+    <button id="tabCanvas" class="active" onclick="switchView('canvas')">📊 Схема</button>
+    <button id="tabSat" onclick="switchView('sat')">🛰️ Супутник 3D</button>
+    <button id="tabOsm" onclick="switchView('osm')">🗺️ Карта 3D</button>
+    <button id="tab3d" onclick="switchView('3d')">🎯 Графік 3D</button>
+    <button id="tabAlt" onclick="switchView('alt')">📈 Профіль</button>
+  </div>
+  <div id="view-container">
+    <canvas id="canvas2d"></canvas>
+    <div id="map"></div>
+    <div id="plot3d"></div>
+    <canvas id="altProfile"></canvas>
+  </div>
+  <div id="status">Завантажте файл .waypoints або перетягніть його сюди</div>
+</div>
 
-// ═══════════════════════════════════════════════
-//  FILE FORMAT
-// ═══════════════════════════════════════════════
-function parseFile(txt){
-  if(txt.trimStart().startsWith('QGC WPL')) return parseQGC(txt);
-  try{
-    const d=JSON.parse(txt);
-    if(!Array.isArray(d.waypoints)) throw new Error('missing waypoints array');
-    return{
-      version:d.version||'1.0', format:'json',
-      metadata:{name:d.metadata?.name||'Untitled', created:d.metadata?.created||new Date().toISOString()},
-      waypoints:d.waypoints.map(w=>({
-        id:w.id||uid(), name:w.name||'Waypoint',
-        lat:+w.lat||0, lon:+w.lon||0, alt:+w.alt||0,
-        type:w.type||'default', description:w.description||'', metadata:w.metadata||{}
-      })),
-      groups:Array.isArray(d.groups)?d.groups:[],
-    };
-  }catch(e){throw new Error('Cannot parse: '+e.message);}
-}
+<script>
+// ── CONSTANTS ──
+const EARTH_R = 6371.0;
+const M_PER_DEG = 111000.0;
+const PREC = 14;
+const ALT_PREC = 6;
+const SNAP_THRESHOLD_RATIO = 0.05;
+const STEM_SIZE_M = 15;
+const ALT_STEP_SCROLL = 5;
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
+const UA_GEOJSON = "https://raw.githubusercontent.com/georgique/world-geojson/develop/countries/ukraine.json";
 
-function parseQGC(txt){
-  const lines=txt.trim().split('\n'), wps=[];
-  for(let i=1;i<lines.length;i++){
-    const c=lines[i].trim().split('\t');
-    if(c.length<12) continue;
-    wps.push({id:uid(),name:'WP '+c[0],lat:+c[8],lon:+c[9],alt:+c[10],
-      type:'default',description:'',
-      metadata:{qgc_index:+c[0],qgc_current:+c[1],qgc_frame:+c[2],qgc_command:+c[3],
-        qgc_params:[+c[4],+c[5],+c[6],+c[7]],qgc_autocontinue:+c[11]}});
-  }
-  return{version:'1.0',format:'qgc_wpl',
-    metadata:{name:'Flight Plan',created:new Date().toISOString()},
-    waypoints:wps,groups:[]};
-}
-
-function toJSON(wf){return JSON.stringify({version:wf.version,metadata:wf.metadata,waypoints:wf.waypoints,groups:wf.groups},null,2);}
-
-function toQGC(wf){
-  const lines=['QGC WPL 110'];
-  wf.waypoints.forEach((wp,i)=>{
-    const m=wp.metadata, p=m.qgc_params||[0,0,0,0];
-    lines.push([i,i===0?1:0,m.qgc_frame||0,m.qgc_command||16,...p,wp.lat,wp.lon,wp.alt,m.qgc_autocontinue??1].join('\t'));
-  });
-  return lines.join('\n')+'\n';
-}
-
-function emptyFile(name='Untitled'){
-  return{version:'1.0',format:'json',metadata:{name,created:new Date().toISOString()},waypoints:[],groups:[]};
-}
-
-function applyTransform(wf,gid,scale,rotDeg){
-  const g=wf.groups.find(x=>x.id===gid); if(!g) return wf;
-  const mb=wf.waypoints.filter(w=>g.waypointIds.includes(w.id)); if(!mb.length) return wf;
-  const cLat=mb.reduce((s,w)=>s+w.lat,0)/mb.length;
-  const cLon=mb.reduce((s,w)=>s+w.lon,0)/mb.length;
-  const cAlt=mb.reduce((s,w)=>s+w.alt,0)/mb.length;
-  const cos=Math.cos(cLat*Math.PI/180), rot=rotDeg*Math.PI/180;
-  return{...wf,waypoints:wf.waypoints.map(w=>{
-    if(!g.waypointIds.includes(w.id)) return w;
-    const dx=(w.lon-cLon)*111320*cos*scale, dz=-(w.lat-cLat)*111320*scale;
-    const rdx=dx*Math.cos(rot)-dz*Math.sin(rot), rdz=dx*Math.sin(rot)+dz*Math.cos(rot);
-    return{...w,
-      lat:parseFloat((cLat-rdz/111320).toFixed(6)),
-      lon:parseFloat((cLon+rdx/(111320*cos)).toFixed(6)),
-      alt:parseFloat((cAlt+(w.alt-cAlt)*scale).toFixed(1))};
-  })};
-}
-
-// ═══════════════════════════════════════════════
-//  STATE
-// ═══════════════════════════════════════════════
-const S={
-  wf:emptyFile(), activeTool:'select',
-  selIds:new Set(), selGrp:null, filePath:'',
+// ── STATE ──
+let state = {
+  header: "QGC WPL 110", wps: [], baseline: [], editMode: false,
+  view: "canvas", selected: null, fileName: "mission.waypoints",
+  showBorder: true, dirty: false, _validCache: null
 };
-window.S=S;
-function set(patch){Object.assign(S,patch);ui();}
+let uaBorderData = null;
 
-// ═══════════════════════════════════════════════
-//  THREE.JS
-// ═══════════════════════════════════════════════
-const ALT=5;
-const TC={default:0x4a9eff,checkpoint:0x4caf50,danger:0xf44336,info:0xffeb3b};
-let scene,cam,ren,raf;
-let orb={az:0.6,el:0.7,dist:300,tgt:new THREE.Vector3()};
-let C3={lat:51,lon:31,cos:Math.cos(51*Math.PI/180)};
-const MM=new Map(), LM=new Map();
-let LINE=null, BOXES=[];
+// ── HISTORY (Undo/Redo) ──
+const hist = { past: [], future: [], MAX: 50 };
 
-const MS={type:null,lx:0,ly:0,dx:0,dy:0,moved:false,dId:null,dPl:null,ray:new THREE.Raycaster()};
-
-function ctr(wps){
-  const v=wps.filter(w=>w.lat||w.lon);
-  if(!v.length) return{lat:51,lon:31,cos:Math.cos(51*Math.PI/180)};
-  const lat=v.reduce((s,w)=>s+w.lat,0)/v.length;
-  const lon=v.reduce((s,w)=>s+w.lon,0)/v.length;
-  return{lat,lon,cos:Math.cos(lat*Math.PI/180)};
-}
-function tw(lat,lon,alt){return new THREE.Vector3((lon-C3.lon)*111.32*C3.cos,alt/1000*ALT,-(lat-C3.lat)*111.32);}
-function fw(v){
-  return{lat:parseFloat((C3.lat-v.z/111.32).toFixed(6)),lon:parseFloat((C3.lon+v.x/(111.32*C3.cos)).toFixed(6)),alt:parseFloat((v.y/ALT*1000).toFixed(1))};
-}
-function ucam(){
-  const{az,el,dist,tgt}=orb;
-  cam.position.set(tgt.x+dist*Math.sin(el)*Math.sin(az),tgt.y+dist*Math.cos(el),tgt.z+dist*Math.sin(el)*Math.cos(az));
-  cam.lookAt(tgt);
+function pushHistory() {
+  hist.past.push(JSON.stringify({
+    wps: state.wps.map(w => ({ ...w, raw: [...w.raw] })),
+    baseline: state.baseline.map(b => ({ ...b }))
+  }));
+  hist.future = [];
+  if (hist.past.length > hist.MAX) hist.past.shift();
+  state.dirty = true;
+  updateDirtyUI();
+  updateUndoRedoUI();
 }
 
-function initThree(){
-  const m=document.getElementById('mount');
-  scene=new THREE.Scene(); scene.background=new THREE.Color(0x1a1e26);
-  cam=new THREE.PerspectiveCamera(55,m.clientWidth/m.clientHeight,0.1,50000); ucam();
-  ren=new THREE.WebGLRenderer({antialias:true});
-  ren.setPixelRatio(Math.min(devicePixelRatio,2));
-  ren.setSize(m.clientWidth,m.clientHeight);
-  m.appendChild(ren.domElement);
-  scene.add(new THREE.AmbientLight(0x607090,3));
-  const dl=new THREE.DirectionalLight(0xffffff,4); dl.position.set(200,500,100); scene.add(dl);
-  scene.add(new THREE.GridHelper(2000,40,0x1e2830,0x1e2830));
-  (function loop(){raf=requestAnimationFrame(loop);ren.render(scene,cam);syncLbls();})();
-  new ResizeObserver(()=>{
-    cam.aspect=m.clientWidth/m.clientHeight;cam.updateProjectionMatrix();
-    ren.setSize(m.clientWidth,m.clientHeight);
-  }).observe(m);
-  m.addEventListener('mousedown',onMD);
-  m.addEventListener('mousemove',onMM);
-  m.addEventListener('mouseup',onMU);
-  m.addEventListener('mouseleave',onMU);
-  m.addEventListener('wheel',onWH,{passive:false});
-  m.addEventListener('contextmenu',e=>e.preventDefault());
+function undo() {
+  if (!hist.past.length) return;
+  hist.future.push(JSON.stringify({ wps: state.wps.map(w => ({ ...w, raw: [...w.raw] })), baseline: state.baseline.map(b => ({ ...b })) }));
+  const saved = JSON.parse(hist.past.pop());
+  state.wps = saved.wps; state.baseline = saved.baseline;
+  invalidateCache(); state.selected = null;
+  updateUndoRedoUI(); refreshAll(); setStatus('Відмінено');
 }
 
-function syncLbls(){
-  const m=document.getElementById('mount'),W=m.clientWidth,H=m.clientHeight;
-  for(const[id,div]of LM){
-    const mesh=MM.get(id); if(!mesh){div.style.display='none';continue;}
-    const p=mesh.position.clone().project(cam);
-    if(p.z>1){div.style.display='none';continue;}
-    div.style.display='block';
-    div.style.left=(p.x*.5+.5)*W+'px';
-    div.style.top=(-p.y*.5+.5)*H+18+'px';
+function redo() {
+  if (!hist.future.length) return;
+  hist.past.push(JSON.stringify({ wps: state.wps.map(w => ({ ...w, raw: [...w.raw] })), baseline: state.baseline.map(b => ({ ...b })) }));
+  const saved = JSON.parse(hist.future.pop());
+  state.wps = saved.wps; state.baseline = saved.baseline;
+  invalidateCache(); state.selected = null;
+  updateUndoRedoUI(); refreshAll(); setStatus('Повторено');
+}
+
+function updateUndoRedoUI() {
+  document.getElementById('btnUndo').disabled = !hist.past.length;
+  document.getElementById('btnRedo').disabled = !hist.future.length;
+}
+
+function updateDirtyUI() {
+  const el = document.getElementById('fileName');
+  if (state.dirty) el.classList.add('dirty'); else el.classList.remove('dirty');
+}
+
+// ── VALID CACHE ──
+function invalidateCache() { state._validCache = null; }
+function valid() {
+  if (!state._validCache) state._validCache = state.wps.filter(w => w.lat !== 0 || w.lon !== 0);
+  return state._validCache;
+}
+
+// ── ARRAY HELPERS (safe for large arrays) ──
+function arrMin(arr) { return arr.reduce((a, b) => (b < a ? b : a), Infinity); }
+function arrMax(arr) { return arr.reduce((a, b) => (b > a ? b : a), -Infinity); }
+
+// ── CANVAS / MAP / PLOT STATE ──
+let nav = { panX: 0, panY: 0, zoom: 1 };
+let dragPoint = null, draggingView = false, mouseStart = { x: 0, y: 0 };
+let screenPts = [], bounds2d = null;
+let rafPending = false;
+
+let map = null, mapLoaded = false, mapMarkers = [], mapStyleType = "sat";
+let plot3dInited = false;
+
+const canvas    = document.getElementById('canvas2d');
+const ctx       = canvas.getContext('2d');
+const altCanvas = document.getElementById('altProfile');
+const altCtx    = altCanvas.getContext('2d');
+
+// ── MODEL ──
+function parseFile(text) {
+  const lines = text.split(/\r?\n/);
+  if (!lines.length || !lines[0].includes("QGC WPL 110")) return false;
+  state.header = lines[0].trim(); state.wps = [];
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i].trim(); if (!line) continue;
+    const p = line.includes("\t") ? line.split("\t") : line.split(/\s+/);
+    if (p.length >= 11) {
+      const lat = parseFloat(p[8]), lon = parseFloat(p[9]), alt = parseFloat(p[10]);
+      if (!isNaN(lat) && !isNaN(lon))
+        state.wps.push({ raw: p.slice(), id: p[0], lat, lon, alt: isNaN(alt) ? 0 : alt });
+    }
   }
+  invalidateCache(); snapshot(); return state.wps.length > 0;
 }
 
-function rebuild(){
-  if(!scene) return;
-  const wf=S.wf; C3=ctr(wf.waypoints);
-  for(const[,m]of MM){scene.remove(m);m.geometry.dispose();m.material.dispose();} MM.clear();
-  const lc=document.getElementById('labels');
-  for(const[,d]of LM) d.remove(); LM.clear();
-  if(LINE){scene.remove(LINE);LINE.geometry.dispose();LINE=null;}
-  for(const b of BOXES) scene.remove(b); BOXES=[];
+function syncRaw(w) {
+  while (w.raw.length < 12) w.raw.push("0");
+  w.raw[8] = w.lat.toFixed(PREC); w.raw[9] = w.lon.toFixed(PREC); w.raw[10] = w.alt.toFixed(ALT_PREC);
+}
 
-  const valid=wf.waypoints.filter(w=>w.lat||w.lon);
-  const ext=(()=>{
-    if(valid.length<2) return 5;
-    const xs=valid.map(w=>(w.lon-C3.lon)*111.32*C3.cos);
-    const zs=valid.map(w=>-(w.lat-C3.lat)*111.32);
-    return Math.max(Math.max(...xs)-Math.min(...xs),Math.max(...zs)-Math.min(...zs));
-  })();
-  const R=Math.max(0.5,ext*0.012);
-  const geo=new THREE.SphereGeometry(R,16,12);
+function buildText() {
+  let o = state.header + "\n";
+  state.wps.forEach(w => { syncRaw(w); o += w.raw.join("\t") + "\n"; });
+  return o;
+}
 
-  if(valid.length>1){
-    LINE=new THREE.Line(
-      new THREE.BufferGeometry().setFromPoints(valid.map(w=>tw(w.lat,w.lon,w.alt))),
-      new THREE.LineBasicMaterial({color:0x4a9eff,opacity:.35,transparent:true})
-    ); scene.add(LINE);
+function snapshot() { state.baseline = state.wps.map(w => ({ lat: w.lat, lon: w.lon, alt: w.alt })); }
+
+function restoreBaseline() {
+  state.wps.forEach((w, i) => {
+    if (i < state.baseline.length) {
+      w.lat = state.baseline[i].lat; w.lon = state.baseline[i].lon; w.alt = state.baseline[i].alt; syncRaw(w);
+    }
+  });
+  invalidateCache();
+}
+
+function center() {
+  const v = valid(); if (!v.length) return null;
+  return { lat: v.reduce((s, w) => s + w.lat, 0) / v.length, lon: v.reduce((s, w) => s + w.lon, 0) / v.length };
+}
+
+function endPoint() { const v = valid(); return v.length ? { lat: v[v.length - 1].lat, lon: v[v.length - 1].lon } : null; }
+
+function totalDistance() {
+  const v = valid(); if (v.length < 2) return 0; let t = 0;
+  for (let i = 0; i < v.length - 1; i++) {
+    const a1 = v[i].lat * Math.PI / 180, a2 = v[i+1].lat * Math.PI / 180;
+    const lo1 = v[i].lon * Math.PI / 180, lo2 = v[i+1].lon * Math.PI / 180;
+    const da = a2 - a1, dlo = lo2 - lo1;
+    const a = Math.sin(da/2)**2 + Math.cos(a1) * Math.cos(a2) * Math.sin(dlo/2)**2;
+    t += EARTH_R * 2 * Math.asin(Math.sqrt(a));
+  }
+  return t;
+}
+
+function rotatePoint(lat, lon, cLat, cLon, deg) {
+  const lonM = M_PER_DEG * Math.cos(cLat * Math.PI / 180);
+  const dx = (lon - cLon) * lonM, dy = (lat - cLat) * M_PER_DEG;
+  const a = -deg * Math.PI / 180, ca = Math.cos(a), sa = Math.sin(a);
+  return [cLat + (dx * sa + dy * ca) / M_PER_DEG, cLon + (dx * ca - dy * sa) / lonM];
+}
+
+function applyTransform() {
+  if (!state.wps.length || state.editMode) return;
+  restoreBaseline();
+  const angle = +document.getElementById("angle").value;
+  const scale = +document.getElementById("scale").value;
+  const rf = document.getElementById("rotateFrom").value;
+  const sf = document.getElementById("scaleFrom").value;
+  if (angle !== 0) {
+    const c = rf === "end" ? endPoint() : center();
+    if (c) state.wps.forEach(w => {
+      if (w.lat === 0 && w.lon === 0) return;
+      const r = rotatePoint(w.lat, w.lon, c.lat, c.lon, angle); w.lat = r[0]; w.lon = r[1]; syncRaw(w);
+    });
+  }
+  if (scale !== 1 && scale > 0) {
+    const c = sf === "end" ? endPoint() : center();
+    if (c) {
+      const lonM = M_PER_DEG * Math.cos(c.lat * Math.PI / 180);
+      state.wps.forEach(w => {
+        if (w.lat === 0 && w.lon === 0) return;
+        const dx = (w.lon - c.lon) * lonM, dy = (w.lat - c.lat) * M_PER_DEG;
+        w.lon = c.lon + dx * scale / lonM; w.lat = c.lat + dy * scale / M_PER_DEG; syncRaw(w);
+      });
+    }
+  }
+  invalidateCache(); refreshAll();
+}
+
+function addWaypoint(lat, lon, alt) {
+  if (alt == null) alt = state.wps.length ? state.wps[state.wps.length - 1].alt : 50;
+  const id = state.wps.length;
+  const raw = [String(id), "0", "3", "16", "0", "0", "0", "0",
+    lat.toFixed(PREC), lon.toFixed(PREC), alt.toFixed(ALT_PREC), "1"];
+  state.wps.push({ raw, id: String(id), lat, lon, alt });
+  renumber(); invalidateCache(); snapshot(); return state.wps.length - 1;
+}
+
+function insertWaypoint(position, lat, lon, alt) {
+  if (alt == null) {
+    const a = state.wps[position - 1], b = state.wps[position];
+    alt = (a && b) ? (a.alt + b.alt) / 2 : (a ? a.alt : (b ? b.alt : 50));
+  }
+  const raw = ["0", "0", "3", "16", "0", "0", "0", "0",
+    lat.toFixed(PREC), lon.toFixed(PREC), alt.toFixed(ALT_PREC), "1"];
+  state.wps.splice(position, 0, { raw, id: "0", lat, lon, alt });
+  renumber(); invalidateCache(); snapshot(); return position;
+}
+
+function moveWaypoint(i, lat, lon) {
+  const w = state.wps[i]; if (!w) return;
+  w.lat = lat; w.lon = lon; syncRaw(w); invalidateCache();
+  if (i < state.baseline.length) { state.baseline[i].lat = lat; state.baseline[i].lon = lon; }
+}
+
+function setAltitude(i, alt) {
+  const w = state.wps[i]; if (!w) return;
+  w.alt = Math.max(0, alt); syncRaw(w);
+  if (i < state.baseline.length) state.baseline[i].alt = w.alt;
+}
+
+function deleteWaypoint(i) {
+  if (i < 0 || i >= state.wps.length) return false;
+  state.wps.splice(i, 1); renumber(); invalidateCache(); snapshot(); return true;
+}
+
+function renumber() { state.wps.forEach((w, i) => { w.id = String(i); w.raw[0] = String(i); }); }
+
+// Returns [{w, i}] for all non-zero waypoints — compute once per render
+function getValidWithIndices() {
+  return state.wps.map((w, i) => ({ w, i })).filter(o => o.w.lat !== 0 || o.w.lon !== 0);
+}
+
+function nearestSegmentByLatLon(lat, lon) {
+  const vwi = getValidWithIndices();
+  if (vwi.length < 2) return null;
+  const lonM = M_PER_DEG * Math.cos(lat * Math.PI / 180);
+  const toM = (wLon, wLat) => [(wLon - lon) * lonM, (wLat - lat) * M_PER_DEG];
+  let best = null;
+  for (let k = 0; k < vwi.length - 1; k++) {
+    const [ax, ay] = toM(vwi[k].w.lon, vwi[k].w.lat);
+    const [bx, by] = toM(vwi[k+1].w.lon, vwi[k+1].w.lat);
+    const dx = bx - ax, dy = by - ay, len2 = dx*dx + dy*dy;
+    let t = len2 > 0 ? ((0 - ax)*dx + (0 - ay)*dy) / len2 : 0;
+    t = Math.max(0, Math.min(1, t));
+    const cx = ax + t*dx, cy = ay + t*dy, d = Math.hypot(cx, cy);
+    if (!best || d < best.dist)
+      best = { dist: d, position: vwi[k+1].i, lat: lat + cy / M_PER_DEG, lon: lon + cx / lonM };
+  }
+  return best;
+}
+
+function handleDblInsert(lat, lon) {
+  const seg = nearestSegmentByLatLon(lat, lon);
+  if (seg) {
+    const v = valid();
+    const lats = v.map(w => w.lat), lons = v.map(w => w.lon);
+    const cLat = (arrMin(lats) + arrMax(lats)) / 2;
+    const lonM = M_PER_DEG * Math.cos(cLat * Math.PI / 180);
+    const wM = (arrMax(lons) - arrMin(lons)) * lonM, hM = (arrMax(lats) - arrMin(lats)) * M_PER_DEG;
+    const diag = Math.hypot(wM, hM) || 1;
+    if (seg.dist <= diag * SNAP_THRESHOLD_RATIO) {
+      pushHistory();
+      const pos = insertWaypoint(seg.position, seg.lat, seg.lon, null);
+      state.selected = pos; refreshAll(); setStatus("Вставлено точку #" + pos + " на маршрут"); return;
+    }
+  }
+  pushHistory();
+  const idx = addWaypoint(lat, lon);
+  state.selected = idx; refreshAll(); setStatus("Додано точку #" + idx + " в кінець");
+}
+
+// ── BORDER ──
+function loadBorder() {
+  if (uaBorderData) return Promise.resolve(uaBorderData);
+  return fetch(UA_GEOJSON).then(r => r.json()).then(data => { uaBorderData = data; return data; })
+    .catch(() => { console.warn("Не вдалося завантажити кордон України"); return null; });
+}
+
+// ── MAPLIBRE ──
+function buildStyle(type) {
+  const tiles = type === "sat"
+    ? ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}']
+    : ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'];
+  return { version: 8,
+    sources: { base: { type: 'raster', tiles, tileSize: 256, attribution: type === "sat" ? '© Esri' : '© OpenStreetMap' } },
+    layers: [{ id: 'base', type: 'raster', source: 'base' }] };
+}
+
+function initMap() {
+  map = new maplibregl.Map({ container: 'map', style: buildStyle('sat'),
+    center: [31.0, 49.0], zoom: 5, pitch: 0, bearing: 0, maxPitch: 85, doubleClickZoom: false });
+  map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
+  map.dragRotate.enable(); map.touchZoomRotate.enableRotation();
+  map.on('load', () => { mapLoaded = true; addBorderLayer(); addRouteLayers(); rebuildMarkers(); fitMapToRoute(true); });
+  map.on('dblclick', e => { if (!state.editMode) return; e.preventDefault(); handleDblInsert(e.lngLat.lat, e.lngLat.lng); });
+}
+
+function addBorderLayer() {
+  if (!map) return;
+  if (!map.getSource('ua-border')) {
+    map.addSource('ua-border', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+    map.addLayer({ id: 'ua-border-line', type: 'line', source: 'ua-border',
+      paint: { 'line-color': '#ffd54f', 'line-width': 3, 'line-opacity': 0.9 } });
+  }
+  loadBorder().then(data => {
+    if (data && map.getSource('ua-border')) {
+      map.getSource('ua-border').setData(data);
+      map.setLayoutProperty('ua-border-line', 'visibility', state.showBorder ? 'visible' : 'none');
+    }
+  });
+}
+
+function addRouteLayers() {
+  const addSrc = (id, data) => { if (!map.getSource(id)) map.addSource(id, { type: 'geojson', data }); };
+  addSrc('route-stems', emptyFC());
+  if (!map.getLayer('stems'))
+    map.addLayer({ id: 'stems', type: 'fill-extrusion', source: 'route-stems',
+      paint: { 'fill-extrusion-color': ['get', 'color'], 'fill-extrusion-height': ['get', 'height'],
+        'fill-extrusion-base': 0, 'fill-extrusion-opacity': 0.85 } });
+  addSrc('route-tops', emptyFC());
+  if (!map.getLayer('routetops'))
+    map.addLayer({ id: 'routetops', type: 'circle', source: 'route-tops',
+      paint: { 'circle-radius': 5, 'circle-color': ['get', 'color'], 'circle-stroke-color': '#fff',
+        'circle-stroke-width': 1.5, 'circle-pitch-alignment': 'map' } });
+  addSrc('route-line', emptyFC());
+  if (!map.getLayer('routeline'))
+    map.addLayer({ id: 'routeline', type: 'line', source: 'route-line', paint: { 'line-color': '#2196f3', 'line-width': 3 } });
+  addSrc('route-ground', emptyFC());
+  if (!map.getLayer('routeground'))
+    map.addLayer({ id: 'routeground', type: 'line', source: 'route-ground',
+      paint: { 'line-color': '#000', 'line-width': 2, 'line-dasharray': [2, 2], 'line-opacity': 0.4 } });
+}
+
+function emptyFC() { return { type: 'FeatureCollection', features: [] }; }
+
+function squareAround(lon, lat, sizeM) {
+  const lonM = M_PER_DEG * Math.cos(lat * Math.PI / 180);
+  const dLon = sizeM / 2 / lonM, dLat = sizeM / 2 / M_PER_DEG;
+  return [[[lon-dLon,lat-dLat],[lon+dLon,lat-dLat],[lon+dLon,lat+dLat],[lon-dLon,lat+dLat],[lon-dLon,lat-dLat]]];
+}
+
+function updateRouteLayers() {
+  if (!map || !mapLoaded) return;
+  const vwi = getValidWithIndices();
+  const zExag = +document.getElementById("zExag").value || 1;
+  const stemFeats = [], topFeats = [];
+  vwi.forEach(({ w, i }, k) => {
+    let color = '#4caf50';
+    if (state.selected === i) color = '#ffeb3b';
+    else if (k === 0) color = '#2e7d32';
+    else if (k === vwi.length - 1) color = '#f44336';
+    const h = Math.max(0.1, w.alt * zExag);
+    stemFeats.push({ type: 'Feature', properties: { color, height: h, gi: i },
+      geometry: { type: 'Polygon', coordinates: squareAround(w.lon, w.lat, STEM_SIZE_M) } });
+    topFeats.push({ type: 'Feature', properties: { color }, geometry: { type: 'Point', coordinates: [w.lon, w.lat] } });
+  });
+  map.getSource('route-stems').setData({ type: 'FeatureCollection', features: stemFeats });
+  map.getSource('route-tops').setData({ type: 'FeatureCollection', features: topFeats });
+  const coords = vwi.map(o => [o.w.lon, o.w.lat]);
+  const lineFC = coords.length > 1 ? [{ type: 'Feature', geometry: { type: 'LineString', coordinates: coords } }] : [];
+  map.getSource('route-line').setData({ type: 'FeatureCollection', features: lineFC });
+  map.getSource('route-ground').setData({ type: 'FeatureCollection', features: lineFC });
+}
+
+function rebuildMarkers() {
+  if (!map || !mapLoaded) return;
+  mapMarkers.forEach(m => m.remove()); mapMarkers = [];
+  const vwi = getValidWithIndices();
+  vwi.forEach(({ w, i }, k) => {
+    const el = document.createElement('div'); el.className = 'wp-marker';
+    let bg = '#4caf50';
+    if (k === 0) bg = '#2e7d32'; else if (k === vwi.length - 1) bg = '#f44336';
+    if (state.selected === i) { bg = '#ffeb3b'; el.style.borderColor = '#ff9800'; }
+    el.style.background = bg; el.title = "#" + i + " • " + w.alt.toFixed(0) + " м";
+    const marker = new maplibregl.Marker({ element: el, draggable: state.editMode }).setLngLat([w.lon, w.lat]).addTo(map);
+    el.addEventListener('click', ev => { ev.stopPropagation(); selectPoint(i); });
+    marker.on('dragstart', () => { pushHistory(); selectPoint(i); });
+    marker.on('drag', () => { const ll = marker.getLngLat(); moveWaypoint(i, ll.lat, ll.lng); updateRouteLayers(); });
+    marker.on('dragend', () => { refreshTable(); refreshInfo(); });
+    mapMarkers.push(marker);
+  });
+  updateRouteLayers();
+}
+
+function fitMapToRoute(animate) {
+  if (!map || !mapLoaded) return;
+  const v = valid(); if (!v.length) return;
+  const b = new maplibregl.LngLatBounds(); v.forEach(w => b.extend([w.lon, w.lat]));
+  map.fitBounds(b, { padding: 60, duration: animate ? 600 : 0, pitch: map.getPitch() });
+}
+
+function setMapStyle(type) {
+  if (!map) return; mapStyleType = type; map.setStyle(buildStyle(type));
+  map.once('idle', () => { addBorderLayer(); addRouteLayers(); updateRouteLayers(); });
+}
+
+function toggleBorder() {
+  state.showBorder = document.getElementById("chkBorder").checked;
+  if (map && mapLoaded && map.getLayer('ua-border-line'))
+    map.setLayoutProperty('ua-border-line', 'visibility', state.showBorder ? 'visible' : 'none');
+}
+
+// ── 2D CANVAS ──
+function resizeCanvas() {
+  const r = canvas.getBoundingClientRect();
+  canvas.width = r.width; canvas.height = r.height;
+  if (state.view === "canvas") draw2D();
+  const ar = altCanvas.getBoundingClientRect();
+  altCanvas.width = ar.width; altCanvas.height = ar.height;
+  if (state.view === "alt") drawAltProfile();
+}
+window.addEventListener('resize', resizeCanvas);
+
+function scheduleDraw2D() {
+  if (!rafPending) { rafPending = true; requestAnimationFrame(() => { draw2D(); rafPending = false; }); }
+}
+
+function draw2D() {
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H); ctx.fillStyle = "#222"; ctx.fillRect(0, 0, W, H);
+
+  // Grid — single path for performance
+  ctx.strokeStyle = "#3a3a3a"; ctx.lineWidth = 1; ctx.beginPath();
+  for (let x = 0; x < W; x += 60) { ctx.moveTo(x, 0); ctx.lineTo(x, H); }
+  for (let y = 0; y < H; y += 60) { ctx.moveTo(0, y); ctx.lineTo(W, y); }
+  ctx.stroke();
+
+  const vwi = getValidWithIndices();
+  screenPts = []; bounds2d = null;
+  if (!vwi.length) {
+    ctx.fillStyle = "#888"; ctx.font = "14px Arial"; ctx.textAlign = "center";
+    ctx.fillText("Немає даних", W/2, H/2); return;
+  }
+  const lons = vwi.map(o => o.w.lon), lats = vwi.map(o => o.w.lat);
+  let minLon = arrMin(lons), maxLon = arrMax(lons), minLat = arrMin(lats), maxLat = arrMax(lats);
+  const lr = (maxLon - minLon) || 0.001, ar = (maxLat - minLat) || 0.001, pad = 0.15;
+  minLon -= lr*pad; maxLon += lr*pad; minLat -= ar*pad; maxLat += ar*pad;
+  const cLat = (minLat + maxLat) / 2, lonM = M_PER_DEG * Math.cos(cLat * Math.PI / 180);
+  const wMeters = (maxLon - minLon) * lonM, hMeters = (maxLat - minLat) * M_PER_DEG;
+  const margin = 50, availW = W - 2*margin, availH = H - 2*margin;
+  const sc = Math.min(availW / wMeters, availH / hMeters);
+  const plotW = wMeters * sc, plotH = hMeters * sc;
+  const offX = margin + (availW - plotW) / 2, offY = margin + (availH - plotH) / 2;
+  bounds2d = { minLon, maxLon, minLat, maxLat, lonM, sc, offX, offY, plotH };
+
+  function toPx(lon, lat) {
+    const bx = offX + (lon - minLon) * lonM * sc;
+    const by = offY + plotH - (lat - minLat) * M_PER_DEG * sc;
+    return [(bx - W/2) * nav.zoom + W/2 + nav.panX, (by - H/2) * nav.zoom + H/2 + nav.panY];
   }
 
-  for(const wp of wf.waypoints){
-    const mat=new THREE.MeshLambertMaterial({color:TC[wp.type]||0x4a9eff});
-    const mesh=new THREE.Mesh(geo.clone(),mat);
-    mesh.position.copy((wp.lat||wp.lon)?tw(wp.lat,wp.lon,wp.alt):new THREE.Vector3());
-    mesh.userData.id=wp.id; scene.add(mesh); MM.set(wp.id,mesh);
-    const div=document.createElement('div'); div.className='wlabel'; div.textContent=wp.name;
-    lc.appendChild(div); LM.set(wp.id,div);
+  ctx.strokeStyle = "#2196f3"; ctx.lineWidth = 2.5; ctx.beginPath();
+  vwi.forEach(({ w }, k) => { const p = toPx(w.lon, w.lat); k === 0 ? ctx.moveTo(p[0], p[1]) : ctx.lineTo(p[0], p[1]); });
+  ctx.stroke();
+
+  vwi.forEach(({ w, i }, k) => {
+    const p = toPx(w.lon, w.lat), x = p[0], y = p[1], sel = (state.selected === i);
+    if (k === 0) {
+      ctx.fillStyle = "#4caf50"; ctx.fillRect(x-7, y-7, 14, 14);
+      ctx.strokeStyle = "#fff"; ctx.lineWidth = 2; ctx.strokeRect(x-7, y-7, 14, 14);
+      ctx.fillStyle = "#4caf50"; ctx.font = "bold 10px Arial"; ctx.textAlign = "center"; ctx.fillText("START", x, y-14);
+    } else if (k === vwi.length - 1) {
+      ctx.beginPath(); ctx.fillStyle = "#f44336"; ctx.moveTo(x, y-8); ctx.lineTo(x-8, y+8); ctx.lineTo(x+8, y+8);
+      ctx.closePath(); ctx.fill(); ctx.strokeStyle = "#fff"; ctx.lineWidth = 1; ctx.stroke();
+      ctx.fillStyle = "#f44336"; ctx.font = "bold 10px Arial"; ctx.textAlign = "center"; ctx.fillText("END", x, y+22);
+    } else {
+      ctx.beginPath(); ctx.arc(x, y, 5, 0, 2*Math.PI);
+      ctx.fillStyle = "#4caf50"; ctx.fill(); ctx.strokeStyle = "#fff"; ctx.lineWidth = 1.5; ctx.stroke();
+    }
+    if (sel) { ctx.beginPath(); ctx.arc(x, y, 12, 0, 2*Math.PI); ctx.strokeStyle = "#ffeb3b"; ctx.lineWidth = 2; ctx.stroke(); }
+    if (state.editMode) {
+      ctx.fillStyle = "#ffeb3b"; ctx.font = "bold 9px Arial"; ctx.textAlign = "center";
+      ctx.fillText(String(i), x, (k === 0 || k === vwi.length-1) ? y-26 : y-12);
+    }
+    screenPts.push({ idx: i, x, y });
+  });
+
+  drawScaleBar(W, H, sc * nav.zoom);
+  ctx.fillStyle = "#fff"; ctx.font = "bold 13px Arial"; ctx.textAlign = "center"; ctx.fillText("📊 Схема (рівний масштаб)", W/2, 20);
+  ctx.fillStyle = "#888"; ctx.font = "11px Arial";
+  ctx.fillText(state.editMode ? "2× клік на лінії — вставити | 2× на вільному — додати | тягнути — рух" : "Drag — рух | Колесо — масштаб | ПКМ — скидання", W/2, 40);
+}
+
+function drawScaleBar(W, H, pxPerMeter) {
+  if (!isFinite(pxPerMeter) || pxPerMeter <= 0) return;
+  const meters = 100 / pxPerMeter;
+  const nice = [1,2,5,10,20,50,100,200,500,1000,2000,5000,10000,20000,50000,100000];
+  let chosen = nice[0];
+  for (const m of nice) { if (m >= meters) { chosen = m; break; } chosen = m; }
+  const barPx = chosen * pxPerMeter, x0 = 20, y0 = H - 25;
+  ctx.strokeStyle = "#fff"; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x0+barPx, y0); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x0, y0-4); ctx.lineTo(x0, y0+4); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x0+barPx, y0-4); ctx.lineTo(x0+barPx, y0+4); ctx.stroke();
+  ctx.fillStyle = "#fff"; ctx.font = "10px Arial"; ctx.textAlign = "left";
+  ctx.fillText(chosen >= 1000 ? (chosen/1000)+" км" : chosen+" м", x0+barPx+6, y0+3);
+}
+
+function pixelToCoord(px, py) {
+  const b = bounds2d; if (!b || nav.zoom === 0) return null;
+  const W = canvas.width, H = canvas.height;
+  const bx = (px - W/2 - nav.panX) / nav.zoom + W/2;
+  const by = (py - H/2 - nav.panY) / nav.zoom + H/2;
+  return [b.minLon + (bx - b.offX) / (b.lonM * b.sc), b.minLat + (b.offY + b.plotH - by) / (M_PER_DEG * b.sc)];
+}
+
+function hitTest(px, py) {
+  let bi = null, bd = 12;
+  screenPts.forEach(p => { const d = Math.hypot(p.x - px, p.y - py); if (d <= bd) { bd = d; bi = p.idx; } });
+  return bi;
+}
+
+function getXY(e) { const r = canvas.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; }
+function getTouchXY(t) { const r = canvas.getBoundingClientRect(); return [t.clientX - r.left, t.clientY - r.top]; }
+
+// Mouse events
+canvas.addEventListener('mousedown', e => {
+  const xy = getXY(e); mouseStart = { x: xy[0], y: xy[1] };
+  if (state.editMode) {
+    const hit = hitTest(xy[0], xy[1]);
+    if (hit !== null) { pushHistory(); dragPoint = hit; selectPoint(hit); } else selectPoint(null); return;
   }
-
-  for(const g of wf.groups){
-    const ms=g.waypointIds.map(id=>MM.get(id)).filter(Boolean); if(!ms.length) continue;
-    const bb=new THREE.Box3(); ms.forEach(m=>bb.expandByObject(m)); bb.expandByScalar(R*1.5);
-    const h=new THREE.Box3Helper(bb,new THREE.Color(g.color||'#4a9eff'));
-    scene.add(h); BOXES.push(h);
+  draggingView = true;
+});
+canvas.addEventListener('mousemove', e => {
+  const xy = getXY(e);
+  if (state.editMode && dragPoint !== null) {
+    const c = pixelToCoord(xy[0], xy[1]);
+    if (c) { moveWaypoint(dragPoint, Math.max(-90, Math.min(90, c[1])), Math.max(-180, Math.min(180, c[0]))); scheduleDraw2D(); } return;
   }
-  updSel();
-}
+  if (!draggingView) return;
+  nav.panX += xy[0] - mouseStart.x; nav.panY += xy[1] - mouseStart.y; mouseStart = { x: xy[0], y: xy[1] }; scheduleDraw2D();
+});
+canvas.addEventListener('mouseup', () => { if (dragPoint !== null) { refreshTable(); refreshInfo(); } dragPoint = null; draggingView = false; });
+canvas.addEventListener('dblclick', e => {
+  if (!state.editMode) return;
+  const xy = getXY(e); if (hitTest(xy[0], xy[1]) !== null) return;
+  const c = pixelToCoord(xy[0], xy[1]);
+  if (c) handleDblInsert(Math.max(-90, Math.min(90, c[1])), Math.max(-180, Math.min(180, c[0])));
+});
+canvas.addEventListener('wheel', e => {
+  e.preventDefault(); nav.zoom *= (e.deltaY < 0) ? 1.1 : 0.9; nav.zoom = Math.max(0.3, Math.min(8, nav.zoom)); draw2D();
+}, { passive: false });
+canvas.addEventListener('contextmenu', e => { e.preventDefault(); nav = { panX: 0, panY: 0, zoom: 1 }; draw2D(); });
 
-function updSel(){
-  for(const[id,mesh]of MM){
-    const wp=S.wf.waypoints.find(w=>w.id===id); if(!wp) continue;
-    const mat=mesh.material;
-    if(S.selIds.has(id)){mat.color.setHex(0xffffff);mat.emissive.setHex(TC[wp.type]||0x4a9eff);mat.emissiveIntensity=.7;}
-    else{mat.color.setHex(TC[wp.type]||0x4a9eff);mat.emissive.setHex(0x000000);mat.emissiveIntensity=0;}
-  }
-  for(const[id,div]of LM) div.className='wlabel'+(S.selIds.has(id)?' sel':'');
-}
-
-function fitView(){
-  const v=S.wf.waypoints.filter(w=>w.lat||w.lon); if(!v.length) return;
-  C3=ctr(v);
-  const pts=v.map(w=>tw(w.lat,w.lon,w.alt));
-  const bb=new THREE.Box3().setFromPoints(pts);
-  bb.getCenter(orb.tgt);
-  orb.dist=Math.max(bb.getSize(new THREE.Vector3()).length()*.9,30);
-  ucam();
-}
-
-// ───── MOUSE ─────
-function ndc(e){
-  const r=ren.domElement.getBoundingClientRect();
-  return new THREE.Vector2(((e.clientX-r.left)/r.width)*2-1,-((e.clientY-r.top)/r.height)*2+1);
-}
-function raycast(n){
-  MS.ray.setFromCamera(n,cam);
-  const h=MS.ray.intersectObjects([...MM.values()]);
-  return h.length?h[0].object.userData.id:null;
-}
-
-function onMD(e){
-  MS.lx=e.clientX;MS.ly=e.clientY;MS.dx=e.clientX;MS.dy=e.clientY;MS.moved=false;
-  if(e.button===2||e.button===1||(e.button===0&&e.altKey)){MS.type='pan';return;}
-  if(e.button!==0) return;
-  const hit=raycast(ndc(e));
-  if(S.activeTool==='move'&&hit){
-    const mesh=MM.get(hit);
-    MS.type='drag';MS.dId=hit;MS.dPl=new THREE.Plane(new THREE.Vector3(0,1,0),-mesh.position.y);
-    set({selIds:new Set([hit]),selGrp:null});
-  } else {MS.type='orbit';}
-}
-
-function onMU(e){
-  const moved=MS.moved,type=MS.type,did=MS.dId;
-  MS.type=null;MS.dId=null;MS.dPl=null;
-  if(type==='drag'&&moved){rebuild();updProps();return;}
-  if(moved||type==='pan') return;
-  if(e.button!==0) return;
-  const n=ndc(e), hit=raycast(n);
-  if(S.activeTool==='select'){
-    if(hit) e.shiftKey?togSel(hit):setSel(hit);
-    else set({selIds:new Set(),selGrp:null});
-  } else if(S.activeTool==='add'){
-    MS.ray.setFromCamera(n,cam);
-    const pt=new THREE.Vector3();
-    MS.ray.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0,1,0),0),pt);
-    const{lat,lon}=fw(pt);
-    const wp={id:uid(),name:'WP '+S.wf.waypoints.length,lat,lon,alt:0,type:'default',description:'',metadata:{}};
-    set({wf:{...S.wf,waypoints:[...S.wf.waypoints,wp]},selIds:new Set([wp.id]),selGrp:null});
-    rebuild();
-  } else if(S.activeTool==='delete'&&hit){
-    const s=new Set(S.selIds); s.delete(hit);
-    set({wf:{...S.wf,
-      waypoints:S.wf.waypoints.filter(w=>w.id!==hit),
-      groups:S.wf.groups.map(g=>({...g,waypointIds:g.waypointIds.filter(id=>id!==hit)})).filter(g=>g.waypointIds.length>0)
-    },selIds:s});
-    rebuild();
-  }
-}
-
-function onMM(e){
-  if(!MS.type) return;
-  const dx=e.clientX-MS.lx,dy=e.clientY-MS.ly; MS.lx=e.clientX;MS.ly=e.clientY;
-  if(Math.hypot(e.clientX-MS.dx,e.clientY-MS.dy)>4) MS.moved=true;
-  if(MS.type==='orbit'){
-    orb.az-=dx*.006; orb.el=Math.max(.05,Math.min(Math.PI*.49,orb.el-dy*.006)); ucam();
-  } else if(MS.type==='pan'){
-    const r=new THREE.Vector3().setFromMatrixColumn(cam.matrix,0);
-    const u=new THREE.Vector3().setFromMatrixColumn(cam.matrix,1);
-    const sp=orb.dist*.001;
-    orb.tgt.addScaledVector(r,-dx*sp); orb.tgt.addScaledVector(u,dy*sp); ucam();
-  } else if(MS.type==='drag'&&MS.dId&&MS.dPl){
-    MS.ray.setFromCamera(ndc(e),cam);
-    const pt=new THREE.Vector3(); MS.ray.ray.intersectPlane(MS.dPl,pt);
-    const{lat,lon}=fw(pt);
-    S.wf={...S.wf,waypoints:S.wf.waypoints.map(w=>w.id!==MS.dId?w:{...w,lat,lon})};
-    const m=MM.get(MS.dId); if(m) m.position.set((lon-C3.lon)*111.32*C3.cos,m.position.y,-(lat-C3.lat)*111.32);
-    updProps();updStat();
-  }
-}
-function onWH(e){
+// Touch events for mobile
+let touchStart = null, touchDragPoint = null;
+canvas.addEventListener('touchstart', e => {
   e.preventDefault();
-  orb.dist*=e.deltaY>0?1.12:.88;
-  orb.dist=Math.max(1,Math.min(5000,orb.dist)); ucam();
-}
+  if (e.touches.length !== 1) return;
+  const xy = getTouchXY(e.touches[0]); touchStart = { x: xy[0], y: xy[1] };
+  if (state.editMode) {
+    const hit = hitTest(xy[0], xy[1]);
+    if (hit !== null) { pushHistory(); touchDragPoint = hit; selectPoint(hit); } else selectPoint(null);
+  }
+}, { passive: false });
+canvas.addEventListener('touchmove', e => {
+  e.preventDefault();
+  if (e.touches.length !== 1 || !touchStart) return;
+  const xy = getTouchXY(e.touches[0]);
+  if (state.editMode && touchDragPoint !== null) {
+    const c = pixelToCoord(xy[0], xy[1]);
+    if (c) { moveWaypoint(touchDragPoint, Math.max(-90, Math.min(90, c[1])), Math.max(-180, Math.min(180, c[0]))); scheduleDraw2D(); }
+  } else {
+    nav.panX += xy[0] - touchStart.x; nav.panY += xy[1] - touchStart.y; touchStart = { x: xy[0], y: xy[1] }; scheduleDraw2D();
+  }
+}, { passive: false });
+canvas.addEventListener('touchend', e => {
+  e.preventDefault();
+  if (touchDragPoint !== null) { refreshTable(); refreshInfo(); }
+  touchDragPoint = null; touchStart = null;
+}, { passive: false });
 
-// ═══════════════════════════════════════════════
-//  SELECTION & GROUPS
-// ═══════════════════════════════════════════════
-function setSel(id){set({selIds:new Set([id]),selGrp:null});}
-function togSel(id){const s=new Set(S.selIds);s.has(id)?s.delete(id):s.add(id);set({selIds:s,selGrp:null});}
-function selAll(){set({selIds:new Set(S.wf.waypoints.map(w=>w.id)),selGrp:null});}
-
-function doGroup(){
-  if(S.selIds.size<2) return;
-  const g={id:uid(),name:'Group '+(S.wf.groups.length+1),waypointIds:[...S.selIds],color:'#4a9eff'};
-  set({wf:{...S.wf,groups:[...S.wf.groups,g]},selIds:new Set(),selGrp:g.id});
-  rebuild();
-}
-function doUngroup(){
-  if(!S.selGrp) return;
-  set({wf:{...S.wf,groups:S.wf.groups.filter(g=>g.id!==S.selGrp)},selGrp:null});
-  rebuild();
-}
-
-// ═══════════════════════════════════════════════
-//  UI
-// ═══════════════════════════════════════════════
-function ui(){renderMenu();renderTools();updProps();updStat();updSel();}
-
-// ── MenuBar ──
-function renderMenu(){
-  const wf=S.wf,fp=S.filePath;
-  const base=(fp||wf.metadata.name||'waypoints').replace(/\.waypoints$/,'');
-  document.getElementById('menubar').innerHTML=`
-    <span class="mb-brand">⬡ Waypoints Editor</span>
-    <nav class="mb-menu">
-      <div class="mb-group"><span class="mb-lbl">File</span>
-        <div class="mb-drop">
-          <button onclick="newFile()">New</button>
-          <button onclick="document.getElementById('fi').click()">Open… (.waypoints)</button>
-          <button onclick="dlText(toJSON(S.wf),'${base}.waypoints')">Save (JSON)</button>
-          <hr>
-          <button onclick="dlText(toJSON(S.wf),'${base}.waypoints')">Export as JSON</button>
-          <button onclick="dlText(toQGC(S.wf),'${base}.waypoints')">Export as QGC WPL</button>
-        </div>
-      </div>
-      <div class="mb-group"><span class="mb-lbl">View</span>
-        <div class="mb-drop">
-          <button onclick="fitView()">Fit View (F)</button>
-        </div>
-      </div>
-    </nav>
-    <span class="mb-badge">${wf.format==='qgc_wpl'?'QGC WPL':'JSON'}</span>
-    <span class="mb-path">${fp||'Untitled.waypoints'}</span>
-  `;
-}
-
-// ── Tools ──
-function renderTools(){
-  const TOOLS=[{id:'select',i:'↖',k:'V'},{id:'add',i:'✚',k:'A'},{id:'move',i:'✥',k:'M'},{id:'delete',i:'✕',k:'D'}];
-  const sel=S.selIds.size,tot=S.wf.waypoints.length;
-  document.getElementById('tools').innerHTML=`
-    <div class="tp-title">Tools</div>
-    <div class="tp-btns">
-      ${TOOLS.map(t=>`<button class="tool-btn${S.activeTool===t.id?' active':''}" onclick="set({activeTool:'${t.id}'})" title="${t.id}">
-        <span class="ti">${t.i}</span><span class="tk">${t.k}</span></button>`).join('')}
-    </div>
-    <div class="tp-div"></div>
-    <div class="tp-actions">
-      <button class="act-btn" onclick="selAll()" ${!tot?'disabled':''} title="Select All (Ctrl+A)"><span class="ti">⊡</span><span>All</span></button>
-      <button class="act-btn" onclick="doGroup()" ${sel<2?'disabled':''} title="Group (G)"><span class="ti">⊞</span><span>Group</span></button>
-      <button class="act-btn" onclick="doUngroup()" ${!S.selGrp?'disabled':''} title="Ungroup (U)"><span class="ti">⊟</span><span>Ungroup</span></button>
-    </div>
-  `;
-}
-
-// ── Properties ──
-function updProps(){
-  const pp=document.getElementById('props');
-  const wf=S.wf,sel=S.selIds,gid=S.selGrp;
-  const grp=gid?wf.groups.find(g=>g.id===gid):null;
-  const wp=sel.size===1?wf.waypoints.find(w=>w.id===[...sel][0]):null;
-  const foot=`<div class="pp-foot"><span>${S.filePath||'Untitled.waypoints'}</span><span>${wf.waypoints.length} waypoints</span></div>`;
-
-  if(grp){
-    pp.innerHTML=`<div class="pp-title">Group</div>
-      <div class="pp-form">
-        <label>Name<input id="gn" value="${esc(grp.name)}"></label>
-        <label>Color<div class="pp-crow">
-          <input type="color" id="gc" value="${grp.color||'#4a9eff'}">
-          <span id="gct">${grp.color||'#4a9eff'}</span>
-        </div></label>
-        <div class="pp-sec">Transform</div>
-        <label>Scale ×<input type="number" id="gs" value="1" step="0.1" min="0.01"></label>
-        <label>Rotation (°)<input type="number" id="gr" value="0" step="1"></label>
-        <button class="pp-apply" id="gapply">Apply Transform</button>
-        <div style="font-size:10px;color:#555;margin-top:2px">Members: ${grp.waypointIds.length}</div>
-      </div>${foot}`;
-    document.getElementById('gn').oninput=e=>updGrp(grp.id,'name',e.target.value);
-    document.getElementById('gc').oninput=e=>{document.getElementById('gct').textContent=e.target.value;updGrp(grp.id,'color',e.target.value);};
-    document.getElementById('gapply').onclick=()=>{
-      const sc=parseFloat(document.getElementById('gs').value)||1;
-      const ro=parseFloat(document.getElementById('gr').value)||0;
-      set({wf:applyTransform(S.wf,grp.id,sc,ro)}); rebuild();
-    };
-    return;
+// ── ALTITUDE PROFILE ──
+function drawAltProfile() {
+  const W = altCanvas.width, H = altCanvas.height;
+  altCtx.clearRect(0, 0, W, H); altCtx.fillStyle = "#1a1a1a"; altCtx.fillRect(0, 0, W, H);
+  const vwi = getValidWithIndices();
+  altCtx.fillStyle = "#ccc"; altCtx.font = "bold 13px Arial"; altCtx.textAlign = "center";
+  altCtx.fillText("📈 Профіль висоти", W/2, 22);
+  if (vwi.length < 2) {
+    altCtx.fillStyle = "#555"; altCtx.font = "13px Arial"; altCtx.fillText("Потрібно мінімум 2 точки", W/2, H/2); return;
   }
 
-  if(wp){
-    pp.innerHTML=`<div class="pp-title">Properties</div>
-      <div class="pp-form">
-        <label>Name<input id="wn" value="${esc(wp.name)}"></label>
-        <label>Type<select id="wt">
-          ${['default','checkpoint','danger','info'].map(t=>`<option${wp.type===t?' selected':''}>${t}</option>`).join('')}
-        </select></label>
-        <label>Latitude (°)<input type="number" id="wla" step="0.000001" value="${wp.lat}"></label>
-        <label>Longitude (°)<input type="number" id="wlo" step="0.000001" value="${wp.lon}"></label>
-        <label>Altitude (m)<input type="number" id="wal" step="1" value="${wp.alt}"></label>
-        <label>Description<textarea id="wd" rows="3">${esc(wp.description)}</textarea></label>
-        <div class="pp-id">ID: ${wp.id.slice(0,8)}…</div>
-      </div>${foot}`;
-    const upd=(f,v)=>{
-      const nwf={...wf,waypoints:wf.waypoints.map(w=>w.id!==wp.id?w:{...w,[f]:v})};
-      S.wf=nwf;
-      const nwp=nwf.waypoints.find(x=>x.id===wp.id);
-      if((f==='lat'||f==='lon'||f==='alt')&&nwp){const m=MM.get(wp.id);if(m) m.position.copy(tw(nwp.lat,nwp.lon,nwp.alt));}
-      if(f==='type'){const m=MM.get(wp.id);if(m) m.material.color.setHex(TC[v]||0x4a9eff);}
-      if(f==='name'){const l=LM.get(wp.id);if(l) l.textContent=v;}
-      updStat();
-    };
-    document.getElementById('wn').oninput=e=>upd('name',e.target.value);
-    document.getElementById('wt').onchange=e=>upd('type',e.target.value);
-    document.getElementById('wla').oninput=e=>upd('lat',parseFloat(e.target.value)||0);
-    document.getElementById('wlo').oninput=e=>upd('lon',parseFloat(e.target.value)||0);
-    document.getElementById('wal').oninput=e=>upd('alt',parseFloat(e.target.value)||0);
-    document.getElementById('wd').oninput=e=>upd('description',e.target.value);
-    return;
+  const v = vwi.map(o => o.w);
+  const dists = [0];
+  for (let i = 1; i < v.length; i++) {
+    const a1 = v[i-1].lat*Math.PI/180, a2 = v[i].lat*Math.PI/180;
+    const lo1 = v[i-1].lon*Math.PI/180, lo2 = v[i].lon*Math.PI/180;
+    const da = a2-a1, dlo = lo2-lo1;
+    const aa = Math.sin(da/2)**2 + Math.cos(a1)*Math.cos(a2)*Math.sin(dlo/2)**2;
+    dists.push(dists[i-1] + EARTH_R * 2 * Math.asin(Math.sqrt(aa)) * 1000);
+  }
+  const totalM = dists[dists.length - 1] || 1;
+  const alts = v.map(w => w.alt);
+  const minAlt = arrMin(alts), maxAlt = arrMax(alts), altRange = (maxAlt - minAlt) || 1;
+  const ml = 64, mr = 20, mt = 38, mb = 38;
+  const pw = W - ml - mr, ph = H - mt - mb;
+
+  // Horizontal grid lines + Y labels
+  altCtx.strokeStyle = "#2a2a2a"; altCtx.lineWidth = 1; altCtx.beginPath();
+  for (let i = 0; i <= 5; i++) {
+    const y = mt + ph * i / 5; altCtx.moveTo(ml, y); altCtx.lineTo(ml + pw, y);
+  }
+  altCtx.stroke();
+  altCtx.fillStyle = "#555"; altCtx.font = "10px Arial"; altCtx.textAlign = "right";
+  for (let i = 0; i <= 5; i++) {
+    const y = mt + ph * i / 5;
+    altCtx.fillText((maxAlt - altRange * i / 5).toFixed(0) + "м", ml - 4, y + 3);
   }
 
-  pp.innerHTML=`<div class="pp-title">Properties</div>
-    <div class="pp-empty">
-      ${sel.size>1?`<p>${sel.size} waypoints selected</p><p class="hint">Press G to group</p>`
-        :`<p>No selection</p><p class="hint">Click a waypoint to select it</p>`}
-    </div>${foot}`;
+  // X-axis labels
+  altCtx.fillStyle = "#555"; altCtx.font = "10px Arial"; altCtx.textAlign = "center";
+  for (let i = 0; i <= 4; i++) {
+    const x = ml + pw * i / 4, dist = totalM * i / 4;
+    altCtx.fillText(dist >= 1000 ? (dist/1000).toFixed(1)+"км" : dist.toFixed(0)+"м", x, H - 8);
+  }
+
+  // Filled area under the curve
+  altCtx.beginPath(); altCtx.moveTo(ml, mt + ph);
+  v.forEach((w, i) => {
+    altCtx.lineTo(ml + pw * dists[i] / totalM, mt + ph - ph * (w.alt - minAlt) / altRange);
+  });
+  altCtx.lineTo(ml + pw, mt + ph); altCtx.closePath();
+  altCtx.fillStyle = "rgba(33,150,243,.15)"; altCtx.fill();
+
+  // Line
+  altCtx.strokeStyle = "#2196f3"; altCtx.lineWidth = 2; altCtx.beginPath();
+  v.forEach((w, i) => {
+    const x = ml + pw * dists[i] / totalM, y = mt + ph - ph * (w.alt - minAlt) / altRange;
+    i === 0 ? altCtx.moveTo(x, y) : altCtx.lineTo(x, y);
+  });
+  altCtx.stroke();
+
+  // Points
+  vwi.forEach(({ w, i }, k) => {
+    const x = ml + pw * dists[k] / totalM, y = mt + ph - ph * (w.alt - minAlt) / altRange;
+    const sel = state.selected === i;
+    altCtx.beginPath(); altCtx.arc(x, y, sel ? 7 : 4, 0, 2*Math.PI);
+    altCtx.fillStyle = sel ? '#ffeb3b' : (k === 0 ? '#4caf50' : (k === vwi.length-1 ? '#f44336' : '#2196f3'));
+    altCtx.fill(); altCtx.strokeStyle = "#fff"; altCtx.lineWidth = 1.5; altCtx.stroke();
+    if (sel) {
+      altCtx.fillStyle = "#fff"; altCtx.font = "bold 10px Arial"; altCtx.textAlign = "center";
+      altCtx.fillText("#" + i + "  " + w.alt.toFixed(0) + "м", x, y - 12);
+    }
+  });
+
+  // Axes
+  altCtx.strokeStyle = "#555"; altCtx.lineWidth = 1; altCtx.beginPath();
+  altCtx.moveTo(ml, mt); altCtx.lineTo(ml, mt+ph); altCtx.lineTo(ml+pw, mt+ph); altCtx.stroke();
 }
 
-function updGrp(id,f,v){
-  const nwf={...S.wf,groups:S.wf.groups.map(g=>g.id!==id?g:{...g,[f]:v})};
-  S.wf=nwf; rebuild();
-}
+altCanvas.addEventListener('click', e => {
+  const vwi = getValidWithIndices(); if (vwi.length < 2) return;
+  const r = altCanvas.getBoundingClientRect();
+  const px = e.clientX - r.left, py = e.clientY - r.top;
+  const W = altCanvas.width, H = altCanvas.height;
+  const ml = 64, mr = 20, mt = 38, mb = 38, pw = W - ml - mr, ph = H - mt - mb;
+  const v = vwi.map(o => o.w);
+  const dists = [0];
+  for (let i = 1; i < v.length; i++) {
+    const a1 = v[i-1].lat*Math.PI/180, a2 = v[i].lat*Math.PI/180;
+    const lo1 = v[i-1].lon*Math.PI/180, lo2 = v[i].lon*Math.PI/180;
+    const da = a2-a1, dlo = lo2-lo1;
+    const aa = Math.sin(da/2)**2 + Math.cos(a1)*Math.cos(a2)*Math.sin(dlo/2)**2;
+    dists.push(dists[i-1] + EARTH_R * 2 * Math.asin(Math.sqrt(aa)) * 1000);
+  }
+  const totalM = dists[dists.length-1] || 1;
+  const alts = v.map(w => w.alt), minAlt = arrMin(alts), altRange = (arrMax(alts) - minAlt) || 1;
+  let best = null, bestD = 18;
+  vwi.forEach(({ i }, k) => {
+    const x = ml + pw * dists[k] / totalM, y = mt + ph - ph * (v[k].alt - minAlt) / altRange;
+    const d = Math.hypot(px - x, py - y);
+    if (d < bestD) { bestD = d; best = i; }
+  });
+  if (best !== null) selectPoint(best);
+});
 
-// ── Status Bar ──
-function updStat(){
-  const H={select:'Click to select · Shift+click multi · Left drag: orbit · Right drag: pan',
-    add:'Click canvas to place waypoint',move:'Drag waypoint to move · Left drag empty: orbit',delete:'Click waypoint to delete'};
-  const sel=S.selIds,wp=sel.size===1?S.wf.waypoints.find(w=>w.id===[...sel][0]):null;
-  document.getElementById('statusbar').innerHTML=`
-    <span class="sb-tool">${S.activeTool}</span>
-    <span class="sb-hint">${H[S.activeTool]}</span>
-    ${wp?`<span class="sb-coords">${esc(wp.name)} — ${wp.lat.toFixed(5)}°, ${wp.lon.toFixed(5)}°, ${wp.alt.toFixed(0)}m</span>`:''}
-    ${sel.size>1?`<span class="sb-multi">${sel.size} selected</span>`:''}
-    <span class="sb-count">${S.wf.waypoints.length} waypoints</span>
-  `;
-}
-
-// ═══════════════════════════════════════════════
-//  FILE OPS
-// ═══════════════════════════════════════════════
-function newFile(){
-  if(S.wf.waypoints.length>0&&!confirm('Discard current file?')) return;
-  set({wf:emptyFile(),selIds:new Set(),selGrp:null,filePath:''});
-  rebuild();
-}
-
-document.getElementById('fi').addEventListener('change',e=>{
-  const f=e.target.files[0]; if(!f) return;
-  const r=new FileReader();
-  r.onload=ev=>{
-    try{
-      const wf=parseFile(ev.target.result);
-      set({wf,selIds:new Set(),selGrp:null,filePath:f.name});
-      rebuild(); setTimeout(fitView,80);
-    }catch(err){alert('Error: '+err.message);}
+// ── 3D PLOTLY ──
+function build3DData() {
+  const vwi = getValidWithIndices(); if (!vwi.length) return null;
+  const c = center(), lonM = M_PER_DEG * Math.cos(c.lat * Math.PI / 180);
+  const zExag = +document.getElementById("zExag").value || 1;
+  return {
+    vwi, zExag,
+    xs: vwi.map(o => (o.w.lon - c.lon) * lonM),
+    ys: vwi.map(o => (o.w.lat - c.lat) * M_PER_DEG),
+    zs: vwi.map(o => o.w.alt * zExag)
   };
-  r.readAsText(f); e.target.value='';
-});
+}
 
-// ═══════════════════════════════════════════════
-//  KEYBOARD
-// ═══════════════════════════════════════════════
-document.addEventListener('keydown',e=>{
-  if(['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName)) return;
-  const map={v:'select',a:'add',m:'move',d:'delete'};
-  if(e.ctrlKey&&e.key.toLowerCase()==='a'){e.preventDefault();selAll();return;}
-  if(!e.ctrlKey&&map[e.key.toLowerCase()]){set({activeTool:map[e.key.toLowerCase()]});return;}
-  if(e.key==='Escape'){set({selIds:new Set(),selGrp:null});return;}
-  if(e.key.toLowerCase()==='f'){fitView();return;}
-  if(e.key.toLowerCase()==='g'&&!e.ctrlKey){doGroup();return;}
-  if(e.key.toLowerCase()==='u'){doUngroup();return;}
-  if((e.key==='Delete'||e.key==='Backspace')&&S.selIds.size>0){
-    const ids=S.selIds;
-    set({wf:{...S.wf,
-      waypoints:S.wf.waypoints.filter(w=>!ids.has(w.id)),
-      groups:S.wf.groups.map(g=>({...g,waypointIds:g.waypointIds.filter(id=>!ids.has(id))})).filter(g=>g.waypointIds.length>0)
-    },selIds:new Set()});
-    rebuild();
+function draw3D() {
+  const el = document.getElementById('plot3d');
+  if (window.PLOTLY_FAILED || typeof Plotly === "undefined") {
+    el.innerHTML = '<div style="color:#888;text-align:center;padding-top:40vh;">3D потребує Plotly (інтернет).</div>'; return;
+  }
+  const d = build3DData(); if (!d) { Plotly.purge('plot3d'); plot3dInited = false; return; }
+  const { vwi, xs, ys, zs, zExag } = d;
+  const minX = arrMin(xs), maxX = arrMax(xs), minY = arrMin(ys), maxY = arrMax(ys);
+  const padX = (maxX - minX) * 0.2 || 100, padY = (maxY - minY) * 0.2 || 100;
+  const gx0 = minX-padX, gx1 = maxX+padX, gy0 = minY-padY, gy1 = maxY+padY;
+  const N = 12, planeX = [], planeY = [], planeZ = [];
+  for (let i = 0; i <= N; i++) {
+    const rx = [], ry = [], rz = [];
+    for (let j = 0; j <= N; j++) { rx.push(gx0+(gx1-gx0)*j/N); ry.push(gy0+(gy1-gy0)*i/N); rz.push(0); }
+    planeX.push(rx); planeY.push(ry); planeZ.push(rz);
+  }
+  const ground = { type:'surface', x:planeX, y:planeY, z:planeZ, showscale:false, opacity:0.35,
+    colorscale:[[0,'#2e4a2e'],[1,'#3a5a3a']], hoverinfo:'skip',
+    contours:{x:{show:true,color:'#557755',width:1},y:{show:true,color:'#557755',width:1}} };
+  const shadow = { x:xs, y:ys, z:xs.map(()=>0), mode:'lines', type:'scatter3d',
+    line:{color:'#000',width:3,dash:'dot'}, opacity:0.4, hoverinfo:'skip' };
+  const stemsX=[], stemsY=[], stemsZ=[];
+  xs.forEach((x,i) => { stemsX.push(x,x,null); stemsY.push(ys[i],ys[i],null); stemsZ.push(0,zs[i],null); });
+  const stems = { x:stemsX, y:stemsY, z:stemsZ, mode:'lines', type:'scatter3d',
+    line:{color:'#888',width:1}, opacity:0.5, hoverinfo:'skip' };
+  const path = {
+    x:xs, y:ys, z:zs, mode:'lines+markers', type:'scatter3d', line:{color:'#64b5f6',width:5},
+    marker: {
+      size: vwi.map(({i},k) => state.selected===i ? 11 : (k===0||k===vwi.length-1 ? 8 : 5)),
+      color: vwi.map(({i},k) => state.selected===i ? '#ffeb3b' : (k===0 ? '#4caf50' : (k===vwi.length-1 ? '#f44336' : '#64b5f6'))),
+      line: { color:'#fff', width:1 }
+    },
+    text: vwi.map(({w,i}) => "#"+i+"<br>alt: "+w.alt.toFixed(0)+" м<br>lat: "+w.lat.toFixed(5)+"<br>lon: "+w.lon.toFixed(5)),
+    hoverinfo:'text', customdata: vwi.map(({i}) => i)
+  };
+  const layout = {
+    paper_bgcolor:'#1a1a1a', font:{color:'#ccc'}, margin:{l:0,r:0,t:30,b:0}, showlegend:false,
+    title:{text:(state.editMode?'✏️ 3D Редагування':'🎯 3D')+(zExag!==1?' (висота ×'+zExag+')':'')+' — клік: вибір, колесо: висота',font:{color:'#fff',size:13}},
+    scene:{ aspectmode:'data',
+      xaxis:{title:'Схід (м)',color:'#f44336',gridcolor:'#333'},
+      yaxis:{title:'Північ (м)',color:'#4caf50',gridcolor:'#333'},
+      zaxis:{title:'Висота (м)'+(zExag!==1?' ×'+zExag:''),color:'#2196f3',gridcolor:'#333'},
+      bgcolor:'#1a1a1a' }
+  };
+  Plotly.react('plot3d', [ground,shadow,stems,path], layout, {responsive:true});
+  if (!plot3dInited) {
+    plot3dInited = true;
+    document.getElementById('plot3d').on('plotly_click', ev => {
+      if (!ev.points || !ev.points.length) return;
+      const pt = ev.points.find(p => p.customdata != null); if (pt) selectPoint(pt.customdata);
+    });
+  }
+}
+
+// ── UI ──
+function isMapView() { return state.view === "sat" || state.view === "osm"; }
+
+function selectPoint(i) {
+  state.selected = i; const w = state.wps[i];
+  const a = document.getElementById("altInput");
+  if (w) a.value = w.alt.toFixed(1);
+  a.disabled = !(state.editMode && i != null);
+  document.getElementById("btnDel").disabled = !(state.editMode && i != null);
+  if (i != null) setStatus("Вибрано точку #" + i);
+  if (state.view === "canvas") draw2D();
+  else if (isMapView()) rebuildMarkers();
+  else if (state.view === "3d") draw3D();
+  else if (state.view === "alt") drawAltProfile();
+  refreshTable();
+}
+
+function refreshTable() {
+  const tb = document.querySelector("#wpTable tbody"); tb.innerHTML = "";
+  let selRow = null;
+  state.wps.forEach((w, i) => {
+    if (w.lat === 0 && w.lon === 0) return;
+    const tr = document.createElement("tr");
+    if (state.selected === i) { tr.className = "sel"; selRow = tr; }
+    [w.id, w.lat.toFixed(5), w.lon.toFixed(5), w.alt.toFixed(0)].forEach(val => {
+      const td = document.createElement("td"); td.textContent = val; tr.appendChild(td);
+    });
+    tr.onclick = () => selectPoint(i);
+    tb.appendChild(tr);
+  });
+  if (selRow) selRow.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+}
+
+function refreshInfo() {
+  const b = document.getElementById("infoBox");
+  if (!state.wps.length) { b.textContent = "Завантажте файл"; return; }
+  const v = valid();
+  if (!v.length) { b.textContent = "Немає точок з координатами"; return; }
+  const c = center(), e = endPoint(), d = totalDistance(), n = v.length;
+  const alts = v.map(w => w.alt), minA = arrMin(alts), maxA = arrMax(alts);
+  b.textContent = "Точок: " + n + "\nДистанція: " + d.toFixed(2) + " км\nВисота: " + minA.toFixed(0) + "–" + maxA.toFixed(0) + " м\n\nЦентр:\n" + c.lat.toFixed(4) + "° " + c.lon.toFixed(4) + "°\n\nКінець:\n" + e.lat.toFixed(4) + "° " + e.lon.toFixed(4) + "°";
+}
+
+function refreshAll() {
+  if (state.view === "canvas") draw2D();
+  else if (isMapView()) rebuildMarkers();
+  else if (state.view === "3d") draw3D();
+  else if (state.view === "alt") drawAltProfile();
+  refreshTable(); refreshInfo();
+}
+
+function setStatus(t) { document.getElementById("status").textContent = t; }
+
+function switchView(v) {
+  state.view = v;
+  canvas.style.display       = (v === "canvas") ? "block" : "none";
+  document.getElementById("map").style.display     = isMapView() ? "block" : "none";
+  document.getElementById("plot3d").style.display  = (v === "3d") ? "block" : "none";
+  altCanvas.style.display    = (v === "alt") ? "block" : "none";
+  ["tabCanvas","tabSat","tabOsm","tab3d","tabAlt"].forEach(id => document.getElementById(id).classList.remove("active"));
+  ({ canvas:"tabCanvas", sat:"tabSat", osm:"tabOsm", "3d":"tab3d", alt:"tabAlt" }[v] || "tabCanvas")
+    .split(",").forEach(id => document.getElementById(id) && document.getElementById(id).classList.add("active"));
+  const tabId = { canvas:"tabCanvas", sat:"tabSat", osm:"tabOsm", "3d":"tab3d", alt:"tabAlt" }[v];
+  if (tabId) document.getElementById(tabId).classList.add("active");
+  document.getElementById("zCtrl").style.display = (v === "3d" || isMapView()) ? "flex" : "none";
+  if (v === "canvas") { resizeCanvas(); }
+  else if (isMapView()) {
+    if (!map) { initMap(); }
+    else { if (mapStyleType !== v) setMapStyle(v); setTimeout(() => { map.resize(); rebuildMarkers(); fitMapToRoute(true); }, 60); }
+  } else if (v === "3d") { plot3dInited = false; draw3D(); }
+  else if (v === "alt") { resizeCanvas(); }
+}
+
+function setEdit(on) {
+  state.editMode = on;
+  const angle = +document.getElementById("angle").value, scale = +document.getElementById("scale").value;
+  if (on && (angle !== 0 || scale !== 1)) {
+    snapshot();
+    document.getElementById("angle").value = 0; document.getElementById("angleVal").textContent = "0"; document.getElementById("angleNum").value = 0;
+    document.getElementById("scale").value = 1; document.getElementById("scaleVal").textContent = "1.0"; document.getElementById("scaleNum").value = 1;
+  }
+  document.getElementById("btnView").classList.toggle("active", !on);
+  document.getElementById("btnEdit").classList.toggle("active", on);
+  document.getElementById("btnView").classList.toggle("gray", on);
+  document.getElementById("btnEdit").classList.toggle("gray", !on);
+  document.getElementById("altInput").disabled = !(on && state.selected != null);
+  document.getElementById("btnDel").disabled = !(on && state.selected != null);
+  setStatus(on ? "Режим редагування" : "Режим перегляду"); refreshAll();
+}
+
+function deleteSelected() {
+  if (state.selected == null) return;
+  if (!confirm("Видалити точку #" + state.selected + "?")) return;
+  const i = state.selected;
+  pushHistory();
+  if (deleteWaypoint(i)) {
+    state.selected = null;
+    document.getElementById("btnDel").disabled = true; document.getElementById("altInput").disabled = true;
+    refreshAll(); setStatus("Точку #" + i + " видалено");
+  }
+}
+
+function resetTransform() {
+  document.getElementById("angle").value = 0; document.getElementById("angleVal").textContent = "0"; document.getElementById("angleNum").value = 0;
+  document.getElementById("scale").value = 1; document.getElementById("scaleVal").textContent = "1.0"; document.getElementById("scaleNum").value = 1;
+  applyTransform();
+}
+
+function resetAll() { resetTransform(); nav = { panX: 0, panY: 0, zoom: 1 }; refreshAll(); setStatus("Скинуто"); }
+
+function saveFile() {
+  if (!state.wps.length) { alert("Спочатку завантажте файл!"); return; }
+  const blob = new Blob([buildText()], { type: "text/plain" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = "modified_" + state.fileName; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  state.dirty = false; updateDirtyUI(); setStatus("Файл збережено");
+}
+
+function loadFileObject(f) {
+  if (f.size > MAX_FILE_SIZE) { alert("Файл занадто великий (> 10 МБ)"); return; }
+  state.fileName = f.name;
+  const r = new FileReader();
+  r.onload = ev => {
+    if (parseFile(ev.target.result)) {
+      document.getElementById("fileName").textContent = "✅ " + f.name;
+      state.dirty = false; updateDirtyUI();
+      hist.past = []; hist.future = []; updateUndoRedoUI();
+      resetTransform(); nav = { panX: 0, panY: 0, zoom: 1 };
+      refreshInfo(); refreshTable();
+      if (state.view === "canvas") resizeCanvas();
+      else if (isMapView()) { if (map && mapLoaded) { rebuildMarkers(); fitMapToRoute(true); } }
+      else if (state.view === "3d") draw3D();
+      else if (state.view === "alt") { resizeCanvas(); }
+      setStatus("Завантажено " + state.wps.length + " точок");
+    } else alert("Не вдалося розібрати файл! Потрібен формат QGC WPL 110");
+  };
+  r.readAsText(f);
+}
+
+// ── EVENT LISTENERS ──
+document.getElementById("angle").addEventListener("input", e => {
+  document.getElementById("angleVal").textContent = e.target.value;
+  document.getElementById("angleNum").value = e.target.value;
+  applyTransform();
+});
+document.getElementById("angleNum").addEventListener("input", e => {
+  const v = Math.max(-360, Math.min(360, +e.target.value || 0));
+  document.getElementById("angle").value = v;
+  document.getElementById("angleVal").textContent = v;
+  applyTransform();
+});
+document.getElementById("scale").addEventListener("input", e => {
+  document.getElementById("scaleVal").textContent = (+e.target.value).toFixed(1);
+  document.getElementById("scaleNum").value = e.target.value;
+  applyTransform();
+});
+document.getElementById("scaleNum").addEventListener("input", e => {
+  const v = Math.max(0.1, Math.min(3, +e.target.value || 1));
+  document.getElementById("scale").value = v;
+  document.getElementById("scaleVal").textContent = v.toFixed(1);
+  applyTransform();
+});
+document.getElementById("rotateFrom").addEventListener("change", applyTransform);
+document.getElementById("scaleFrom").addEventListener("change", applyTransform);
+document.getElementById("altInput").addEventListener("change", e => {
+  if (state.selected != null) {
+    pushHistory(); setAltitude(state.selected, +e.target.value);
+    refreshAll(); setStatus("Точка #" + state.selected + ": висота = " + (+e.target.value).toFixed(0) + " м");
   }
 });
+document.getElementById("zExag").addEventListener("input", e => {
+  document.getElementById("zExagVal").textContent = e.target.value + "×";
+  if (state.view === "3d") draw3D(); else if (isMapView()) updateRouteLayers();
+});
+document.getElementById("plot3d").addEventListener("wheel", e => {
+  if (state.view === "3d" && state.editMode && state.selected != null) {
+    e.preventDefault();
+    const step = (e.deltaY < 0) ? ALT_STEP_SCROLL : -ALT_STEP_SCROLL;
+    pushHistory(); setAltitude(state.selected, state.wps[state.selected].alt + step);
+    document.getElementById("altInput").value = state.wps[state.selected].alt.toFixed(1);
+    refreshTable(); refreshInfo(); draw3D();
+    setStatus("Точка #" + state.selected + ": висота = " + state.wps[state.selected].alt.toFixed(0) + " м");
+  }
+}, { passive: false });
 
-// ═══════════════════════════════════════════════
-//  INIT
-// ═══════════════════════════════════════════════
-ui();
-initThree();
-rebuild();
+document.getElementById("fileInput").addEventListener("change", e => {
+  const f = e.target.files[0]; if (!f) return;
+  loadFileObject(f); e.target.value = '';
+});
 
-// expose to inline onclick handlers
-window.newFile=newFile;
-window.set=set;
-window.selAll=selAll;
-window.doGroup=doGroup;
-window.doUngroup=doUngroup;
-window.fitView=fitView;
-window.dlText=dlText;
-window.toJSON=toJSON;
-window.toQGC=toQGC;
-window.updGrp=updGrp;
+// ── DRAG-AND-DROP ──
+const dropOverlay = document.getElementById('drop-overlay');
+let dragCounter = 0;
+document.addEventListener('dragenter', e => {
+  if ([...e.dataTransfer.types].includes('Files')) { dragCounter++; dropOverlay.classList.add('active'); }
+});
+document.addEventListener('dragleave', () => {
+  dragCounter--; if (dragCounter <= 0) { dragCounter = 0; dropOverlay.classList.remove('active'); }
+});
+document.addEventListener('dragover', e => e.preventDefault());
+document.addEventListener('drop', e => {
+  e.preventDefault(); dragCounter = 0; dropOverlay.classList.remove('active');
+  const f = e.dataTransfer.files[0];
+  if (f && (f.name.endsWith('.waypoints') || f.type === 'text/plain')) loadFileObject(f);
+  else if (f) alert("Будь ласка, відкрийте файл .waypoints");
+});
+
+// ── KEYBOARD ──
+window.addEventListener('keydown', e => {
+  if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
+  if (e.ctrlKey && e.key.toLowerCase() === 'z') { e.preventDefault(); undo(); return; }
+  if (e.ctrlKey && (e.key.toLowerCase() === 'y' || (e.shiftKey && e.key.toLowerCase() === 'z'))) { e.preventDefault(); redo(); return; }
+  if ((e.key === "Delete" || e.key === "Backspace") && state.editMode && state.selected != null) deleteSelected();
+});
+
+// ── INIT ──
+resizeCanvas();
 </script>
 </body>
 </html>
