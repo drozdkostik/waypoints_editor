@@ -3,39 +3,60 @@ import './ToolsPanel.css';
 
 interface Props {
   activeTool: ToolType;
+  selectedCount: number;
+  selectedGroupId: string | null;
   onToolChange: (tool: ToolType) => void;
+  onGroup: () => void;
+  onUngroup: () => void;
 }
 
-const TOOLS: { id: ToolType; label: string; icon: string; shortcut: string; title: string }[] = [
-  { id: 'select', label: 'V', icon: '↖', shortcut: 'V', title: 'Select (V)' },
-  { id: 'add',    label: 'A', icon: '✚', shortcut: 'A', title: 'Add Waypoint (A)' },
-  { id: 'move',   label: 'M', icon: '✥', shortcut: 'M', title: 'Move (M)' },
-  { id: 'delete', label: 'D', icon: '✕', shortcut: 'D', title: 'Delete (D)' },
+const TOOLS: { id: ToolType; icon: string; key: string; title: string }[] = [
+  { id: 'select', icon: '↖', key: 'V', title: 'Select (V)' },
+  { id: 'add',    icon: '✚', key: 'A', title: 'Add (A)' },
+  { id: 'move',   icon: '✥', key: 'M', title: 'Move (M)' },
+  { id: 'delete', icon: '✕', key: 'D', title: 'Delete (D)' },
 ];
 
-export function ToolsPanel({ activeTool, onToolChange }: Props) {
+export function ToolsPanel({ activeTool, selectedCount, selectedGroupId, onToolChange, onGroup, onUngroup }: Props) {
   return (
     <aside className="tools-panel">
       <div className="tools-panel__title">Tools</div>
+
       <div className="tools-panel__buttons">
-        {TOOLS.map((tool) => (
+        {TOOLS.map(t => (
           <button
-            key={tool.id}
-            className={`tool-btn${activeTool === tool.id ? ' tool-btn--active' : ''}`}
-            title={tool.title}
-            onClick={() => onToolChange(tool.id)}
+            key={t.id}
+            className={`tool-btn${activeTool === t.id ? ' tool-btn--active' : ''}`}
+            title={t.title}
+            onClick={() => onToolChange(t.id)}
           >
-            <span className="tool-btn__icon">{tool.icon}</span>
-            <span className="tool-btn__label">{tool.label}</span>
+            <span className="tool-btn__icon">{t.icon}</span>
+            <span className="tool-btn__key">{t.key}</span>
           </button>
         ))}
       </div>
-      <div className="tools-panel__legend">
-        {TOOLS.map((t) => (
-          <div key={t.id} className="tools-panel__legend-item">
-            <kbd>{t.shortcut}</kbd> {t.title.split(' (')[0]}
-          </div>
-        ))}
+
+      <div className="tools-panel__divider" />
+
+      <div className="tools-panel__actions">
+        <button
+          className="action-btn"
+          title="Group selected waypoints (G)"
+          disabled={selectedCount < 2}
+          onClick={onGroup}
+        >
+          <span>⊞</span>
+          <span>Group</span>
+        </button>
+        <button
+          className="action-btn"
+          title="Ungroup (U)"
+          disabled={!selectedGroupId}
+          onClick={onUngroup}
+        >
+          <span>⊟</span>
+          <span>Ungroup</span>
+        </button>
       </div>
     </aside>
   );

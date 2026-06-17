@@ -1,10 +1,11 @@
 .props-panel {
-  width: 220px;
+  width: 230px;
   background: #1e1e1e;
   border-left: 1px solid #333;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  flex-shrink: 0;
 }
 
 .props-panel__title {
@@ -23,14 +24,14 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  color: #666;
+  gap: 6px;
+  color: #555;
   font-size: 13px;
 }
 
 .props-panel__hint {
   font-size: 11px;
-  color: #444;
+  color: #3a3a3a;
   text-align: center;
   padding: 0 16px;
 }
@@ -38,10 +39,10 @@
 .props-panel__form {
   flex: 1;
   overflow-y: auto;
-  padding: 12px;
+  padding: 10px 12px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
 .props-panel__form label {
@@ -49,17 +50,17 @@
   flex-direction: column;
   gap: 3px;
   font-size: 11px;
-  color: #888;
+  color: #777;
 }
 
 .props-panel__form input,
 .props-panel__form select,
 .props-panel__form textarea {
-  background: #2d2d2d;
-  border: 1px solid #444;
+  background: #2a2a2a;
+  border: 1px solid #404040;
   color: #ddd;
   border-radius: 3px;
-  padding: 4px 6px;
+  padding: 4px 7px;
   font-size: 12px;
   outline: none;
   font-family: inherit;
@@ -71,23 +72,67 @@
   border-color: #0088ff;
 }
 
-.props-panel__row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px;
+.props-panel__section {
+  font-size: 10px;
+  color: #555;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-top: 4px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #2a2a2a;
+}
+
+.props-panel__color-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.props-panel__color-row input[type="color"] {
+  width: 32px;
+  height: 24px;
+  padding: 1px;
+  cursor: pointer;
+}
+
+.props-panel__color-row span {
+  font-size: 11px;
+  color: #666;
+  font-family: monospace;
+}
+
+.props-panel__apply {
+  background: #0066cc;
+  border: none;
+  color: #fff;
+  border-radius: 4px;
+  padding: 7px 12px;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  margin-top: 4px;
+  transition: background 0.15s;
+}
+
+.props-panel__apply:hover { background: #0077ee; }
+
+.props-panel__members {
+  font-size: 11px;
+  color: #555;
+  margin-top: 2px;
 }
 
 .props-panel__id {
   font-size: 10px;
-  color: #444;
-  margin-top: 4px;
+  color: #3a3a3a;
+  margin-top: 2px;
 }
 
 .props-panel__footer {
-  border-top: 1px solid #333;
+  border-top: 1px solid #2a2a2a;
   padding: 8px 12px;
   font-size: 10px;
-  color: #555;
+  color: #444;
   display: flex;
   flex-direction: column;
   gap: 2px;

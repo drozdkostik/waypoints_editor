@@ -1,0 +1,43 @@
+.three-canvas {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  outline: none;
+}
+
+.three-canvas canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.three-canvas__labels {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.wp-label {
+  position: absolute;
+  transform: translateX(-50%);
+  font-size: 11px;
+  font-family: Inter, system-ui, sans-serif;
+  color: #aaa;
+  white-space: nowrap;
+  pointer-events: none;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.9);
+}
+
+.wp-label--sel {
+  color: #fff;
+  font-weight: 600;
+}
+
+.three-canvas__hint {
+  position: absolute;
+  bottom: 8px;
+  left: 10px;
+  font-size: 10px;
+  color: #3a4050;
+  pointer-events: none;
+}
