@@ -1,73 +1,92 @@
-# React + TypeScript + Vite
+# Waypoints Editor
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+3D-редактор маршрутних точок для браузера. Не потребує сервера чи інтернету після збирання.
 
-Currently, two official plugins are available:
+## Запуск без інсталяції
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+1. Завантажте файл `dist/index.html`
+2. Відкрийте його у браузері подвійним кліком
 
-## React Compiler
+Все вбудовано в один HTML-файл (~200 КБ в gzip). Працює офлайн.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+---
 
-## Expanding the ESLint configuration
+## Збирання з вихідного коду
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+npm run build
+# → dist/index.html  (один файл, відкривається прямо з файлової системи)
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Для режиму розробки з гарячим перезавантаженням:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm run dev
+# → http://localhost:5173
 ```
+
+---
+
+## Можливості
+
+- **3D-огляд** на базі Three.js з орбітальною камерою
+- **Додавання точок** кліком по сцені (інструмент A)
+- **Переміщення** перетягуванням (інструмент M)
+- **Видалення** кліком (інструмент D)
+- **Групування** з перетворенням (масштаб, поворот)
+- **Імпорт / Експорт** у форматах JSON `.waypoints` та QGC WPL
+
+---
+
+## Клавіатурні скорочення
+
+| Клавіша | Дія |
+|---------|-----|
+| `V` | Інструмент вибору |
+| `A` | Інструмент додавання |
+| `M` | Інструмент переміщення |
+| `D` | Інструмент видалення |
+| `F` | Підігнати вид під всі точки |
+| `G` | Згрупувати виділені точки |
+| `U` | Розгрупувати |
+| `Ctrl+A` | Виділити всі |
+| `Del` / `Backspace` | Видалити виділене |
+| `Esc` | Зняти виділення |
+
+---
+
+## Навігація у 3D-сцені
+
+| Дія | Опис |
+|-----|------|
+| Ліва кнопка + перетягування | Обертання камери |
+| Права кнопка + перетягування | Панорамування |
+| Колесо миші | Наближення / віддалення |
+| `Alt` + перетягування | Панорамування |
+
+---
+
+## Формат файлу `.waypoints` (JSON)
+
+```json
+{
+  "version": "1.0",
+  "metadata": { "name": "Мій маршрут", "created": "2024-01-01T00:00:00.000Z" },
+  "waypoints": [
+    {
+      "id": "uuid",
+      "name": "WP 0",
+      "lat": 50.45,
+      "lon": 30.52,
+      "alt": 100,
+      "type": "default",
+      "description": "",
+      "metadata": {}
+    }
+  ],
+  "groups": []
+}
+```
+
+Типи точок: `default` (синій), `checkpoint` (зелений), `danger` (червоний), `info` (жовтий).
