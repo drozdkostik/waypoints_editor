@@ -112,6 +112,12 @@ export default function App() {
       const tool = map[e.key.toLowerCase()];
       if (tool) { setActiveTool(tool); return; }
       if (e.key === 'Escape') { setSelectedIds(new Set()); setSelectedGroupId(null); return; }
+      if (e.ctrlKey && e.key.toLowerCase() === 'a') {
+        e.preventDefault();
+        setSelectedIds(new Set(waypointFile.waypoints.map(w => w.id)));
+        setSelectedGroupId(null);
+        return;
+      }
       if (e.key.toLowerCase() === 'f') { setFitSignal(s => s + 1); return; }
       if (e.key.toLowerCase() === 'g' && !e.ctrlKey) { handleGroup(); return; }
       if (e.key.toLowerCase() === 'u') { handleUngroup(); return; }
@@ -145,8 +151,10 @@ export default function App() {
         <ToolsPanel
           activeTool={activeTool}
           selectedCount={selectedIds.size}
+          totalCount={waypointFile.waypoints.length}
           selectedGroupId={selectedGroupId}
           onToolChange={setActiveTool}
+          onSelectAll={() => { setSelectedIds(new Set(waypointFile.waypoints.map(w => w.id))); setSelectedGroupId(null); }}
           onGroup={handleGroup}
           onUngroup={handleUngroup}
         />
