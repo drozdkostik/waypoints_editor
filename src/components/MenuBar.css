@@ -1,0 +1,87 @@
+.menubar {
+  height: 36px;
+  background: #161616;
+  border-bottom: 1px solid #333;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  gap: 16px;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.menubar__brand {
+  font-size: 13px;
+  font-weight: 600;
+  color: #4a9eff;
+  letter-spacing: 0.5px;
+}
+
+.menubar__menu {
+  display: flex;
+  gap: 4px;
+}
+
+.menubar__group {
+  position: relative;
+}
+
+.menubar__group:hover .menubar__dropdown {
+  display: flex;
+}
+
+.menubar__label {
+  padding: 4px 10px;
+  font-size: 12px;
+  color: #ccc;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.menubar__label:hover {
+  background: #2a2a2a;
+  color: #fff;
+}
+
+.menubar__dropdown {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  min-width: 160px;
+  background: #252525;
+  border: 1px solid #444;
+  border-radius: 4px;
+  flex-direction: column;
+  z-index: 100;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+  padding: 4px 0;
+}
+
+.menubar__dropdown button {
+  background: none;
+  border: none;
+  color: #ccc;
+  font-size: 12px;
+  padding: 6px 16px;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.menubar__dropdown button:hover {
+  background: #0066cc;
+  color: #fff;
+}
+
+.menubar__dropdown hr {
+  border: none;
+  border-top: 1px solid #333;
+  margin: 4px 0;
+}
+
+.menubar__path {
+  margin-left: auto;
+  font-size: 11px;
+  color: #555;
+}

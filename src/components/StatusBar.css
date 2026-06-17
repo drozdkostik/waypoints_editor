@@ -1,0 +1,30 @@
+.statusbar {
+  height: 24px;
+  background: #161616;
+  border-top: 1px solid #333;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  gap: 16px;
+  font-size: 11px;
+  color: #555;
+  flex-shrink: 0;
+}
+
+.statusbar__tool {
+  color: #4a9eff;
+  text-transform: capitalize;
+}
+
+.statusbar__hint {
+  color: #666;
+}
+
+.statusbar__coords {
+  color: #888;
+}
+
+.statusbar__count {
+  margin-left: auto;
+  color: #555;
+}
